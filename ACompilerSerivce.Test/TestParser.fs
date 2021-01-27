@@ -3,10 +3,7 @@ module TestParser
 open System
 open Xunit
 open Parser
-
-[<Fact>]
-let ``My test`` () =
-    Assert.True(true)
+open Ast
 
 let testFunc data wanted = 
    match wanted , (Parser.parse data) with
@@ -33,3 +30,37 @@ let ``test 5`` () =
         "(let \n ((x 10) (y 20)) (+ x y)\n)" 
         (Ok (SExp [(SId "let"); (SExp [(SExp [(SId "x") ; (SInt 10L)]);
             (SExp [(SId "y");(SInt 20L)])]); (SExp [(SId "+"); (SId "x"); (SId "y")])]))
+
+
+[<Fact>]
+let ``post parser test 1`` () = 
+   try
+       let res = parseToAst "(let \n ((x 10) (y 20)) (+ x y))"
+       Assert.Equal(
+           LetExp ([("x", (Int 10L)); ("y", (Int 20L))],(OpExp (ExprOp.Add, (Id "x"), (Id "y")))),
+           res
+       )
+   with 
+   | _ -> Assert.True(false)
+
+[<Fact>]
+let ``post parser test 2`` () = 
+    try 
+        let res = parseToAst "(let (let []))"
+        Assert.True(false)
+    with 
+    | :? ExcepOfExpToAst -> Assert.True(true)
+    | _ -> Assert.True(false)
+
+[<Fact>]
+let ``post parser test 3`` () =
+    try 
+        let res = parseToAst "(let \n ((x 10) (y (- 10 20)) (z 30)) (+ x y z))"
+        Assert.Equal(
+            LetExp ([("x", Int 10L); ("y", OpExp (ExprOp.Sub, Int 10L, Int 20L)); 
+                     ("z", Int 30L)], 
+                    (OpExp (ExprOp.Add, Id "x", (OpExp (ExprOp.Add , Id "y", Id "z"))))),
+            res
+        )
+    with 
+    | _ -> Assert.True(false)
