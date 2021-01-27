@@ -8,10 +8,14 @@ type SExpression =
 | SInt of int64
 | SExp of SExpression list
 
-let pLPair = pchar '('
-let pRPair = pchar ')'
+let pLPair = pchar '(' <|> pchar '[' <|> pchar '{'
+let pRPair = pchar ')' <|> pchar ']' <|> pchar '}'
 
-let idChar = noneOf (List.append ['(' ; ')' ; ' '; '\n'] (List.map (fun x -> (string x).[0]) [0 .. 9]))
+let notIdentifierChar = 
+    (List.append ['(' ; ')' ; ' '; '\n'; '['; ']'; '{' ; '}'] 
+        (List.map (fun x -> (string x).[0]) [0 .. 9]))
+
+let idChar = noneOf notIdentifierChar
 let pId : Parser<SExpression, unit> = many1Chars idChar |>> SId
 let pNum : Parser<SExpression, unit> = pint64 |>> SInt
 

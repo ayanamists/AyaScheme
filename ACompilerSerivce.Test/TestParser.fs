@@ -49,8 +49,8 @@ let ``post parser test 2`` () =
         let res = parseToAst "(let (let []))"
         Assert.True(false)
     with 
-    | :? ExcepOfExpToAst -> Assert.True(true)
-    | _ -> Assert.True(false)
+    | :? ExcepOfExpToAst -> Assert.True(false)
+    | _ -> Assert.True(true)
 
 [<Fact>]
 let ``post parser test 3`` () =
@@ -60,6 +60,18 @@ let ``post parser test 3`` () =
             LetExp ([("x", Int 10L); ("y", OpExp (ExprOp.Sub, Int 10L, Int 20L)); 
                      ("z", Int 30L)], 
                     (OpExp (ExprOp.Add, Id "x", (OpExp (ExprOp.Add , Id "y", Id "z"))))),
+            res
+        )
+    with 
+    | _ -> Assert.True(false)
+
+[<Fact>]
+let ``post parser test 4`` () =
+    try
+        let res = parseToAst "(let \n [(x 20) (y (let {[t 20]} t))] (/ x y))"
+        Assert.Equal(
+            LetExp ([("x", Int 20L); ("y", LetExp ([("t", Int 20L)], Id "t"))], 
+                OpExp (ExprOp.Div, Id "x", Id "y")),
             res
         )
     with 
