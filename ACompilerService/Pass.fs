@@ -3,7 +3,7 @@
 open Ast
 
 (*
-    Pass 1: Lexical Address (share by interpreter and compiler)
+    Pass 1: Lexical Address
     e.g. 
          in  -> (let ([a 10] [b 20])
                   (let ([c 11] [a 12])
@@ -39,4 +39,3 @@ let lexicalAddress exp =
         | Expr.OpExp (op, expr1, expr2) ->
             Pass1Out.P1OpExp (op, loop expr1 env index, loop expr2 env index )
     loop exp [] 0
-            
