@@ -7,6 +7,8 @@
   <ItemGroup>
     <Compile Include="Ast.fs" />
     <Compile Include="Parser.fs" />
+    <Compile Include="Pass.fs" />
+    <Compile Include="Interpreter.fs" />
   </ItemGroup>
 
   <ItemGroup>
