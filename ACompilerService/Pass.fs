@@ -22,7 +22,17 @@ let rec searchEnv (env:Pass1Env) var =
     | [] -> Error () 
 
 let lexicalAddress exp =
-    let rec loop exp (env:Pass1Env) index = 
+    let genSym = 
+        let mutable idx = 0
+        fun x ->
+            if x = 0 then
+                let thisIdx = idx
+                idx <- idx + 1
+                thisIdx
+            else
+                idx
+
+    let rec loop exp (env:Pass1Env) = 
         match exp with
         | Expr.Int i -> P1Int i 
         | Expr.Id i -> 
@@ -30,12 +40,22 @@ let lexicalAddress exp =
             | Ok res -> res |> Pass1Out.P1Id
             | Error _ -> VarNotBound (sprintf "Var %A not bound" i) |> raise
         | Expr.LetExp (l, expr) -> 
-            let (nowEnv, nowIdx, nowL) = 
-                List.fold ( fun (thisEnv:Map<Identifier, Index>, idx, l) (var, vexp) -> 
-                    (thisEnv.Add(var, idx), idx + 1, (idx, loop vexp env index) :: l)
-                ) (Map<Identifier, Index>([]), index, []) l
-            let nowExpr = loop expr (nowEnv::env) nowIdx
+            let (nowEnv, nowL) = 
+                List.fold ( fun (thisEnv:Map<Identifier, Index>, l) (var, vexp) -> 
+                    let idx = genSym 0
+                    (thisEnv.Add(var, idx), (idx, loop vexp env) :: l)
+                ) (Map<Identifier, Index>([]), []) l
+            let nowExpr = loop expr (nowEnv::env)
             Pass1Out.P1LetExp ((List.rev nowL), nowExpr)
         | Expr.OpExp (op, expr1, expr2) ->
-            Pass1Out.P1OpExp (op, loop expr1 env index, loop expr2 env index )
-    loop exp [] 0
+            Pass1Out.P1OpExp (op, loop expr1 env,  loop expr2 env )
+    let res = loop exp []
+    let idx = genSym 1 
+    (res, idx)
+
+let pass1 = lexicalAddress
+
+(*
+    Approach 1 : Pass 2 Administrative Normal Form
+*)
+let anf exp = 0
