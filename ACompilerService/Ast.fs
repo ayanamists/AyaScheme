@@ -40,3 +40,5 @@ type Pass2Out =
 | P2Atm of Pass2Atm
 | P2LetExp of Index * Pass2Out * Pass2Out
 | P2OpExp of ExprOp * Pass2Atm * Pass2Atm
+let P2IntAtm x = P2Int x |> P2Atm
+let P2VarAtm x = P2Var x |> P2Atm
