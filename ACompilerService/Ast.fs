@@ -42,3 +42,24 @@ type Pass2Out =
 | P2OpExp of ExprOp * Pass2Atm * Pass2Atm
 let P2IntAtm x = P2Int x |> P2Atm
 let P2VarAtm x = P2Var x |> P2Atm
+
+type Pass3Info = string
+type Pass3Atm =
+| P3Int of int64
+| P3Var of Index
+type Pass3Exp = 
+| P3Atm of Pass3Atm
+| P3BPrim of ExprOp * Pass3Atm * Pass3Atm
+type Pass3Stmt =
+| P3Assign of Index * Pass3Exp
+type Pass3Tail = 
+| P3Return of Pass3Exp
+| P3Seq of Pass3Stmt * Pass3Tail
+type Pass3Label = string
+type Pass3Block = Pass3Label * Pass3Tail  
+type Pass3Out = 
+| P3Program of Pass3Info * Pass3Block list
+let emptyInfo = ""
+let startLabel = "_start"
+let p3IntAtm i = P3Int i |> P3Atm
+let p3VarAtm i = P3Var i |> P3Atm

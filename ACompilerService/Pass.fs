@@ -95,4 +95,30 @@ let pass2 = anf
 (*
     Approach 1 : Pass 3 Explicit Control
 *)
+let p2AtmToP3Atm atm = 
+    match atm with
+    | P2Int i -> P3Int i
+    | P2Var i -> P3Var i
+let p2OpExpToP3OpExp op atm1 atm2 =
+    P3BPrim (op, atm1 |> p2AtmToP3Atm, atm2 |> p2AtmToP3Atm)
+
+let explicitControl exp =
+    let rec explicitTail exp = 
+        match exp with
+        | P2Atm atm -> let p3Atm = p2AtmToP3Atm atm in P3Atm p3Atm |> P3Return
+        | P2LetExp (idx, rhs, e) -> let cont = explicitTail e in explicitAssign idx rhs cont
+        | P2OpExp (op, atm1, atm2) -> let p3Opbp = p2OpExpToP3OpExp op atm1 atm2 in P3Return p3Opbp
+    and explicitAssign idx rhs cont = 
+        match rhs with
+        | P2Atm atm -> let p3Atm = p2AtmToP3Atm atm in P3Seq (P3Assign (idx, p3Atm |> P3Atm), cont)
+        | P2LetExp (idx2, rhs2, e) -> 
+            let contE = explicitAssign idx e cont
+            explicitAssign idx2 rhs2 contE
+        | P2OpExp (op, atm1, atm2) -> 
+            let p3Opbp = p2OpExpToP3OpExp op atm1 atm2
+            P3Seq (P3Assign (idx, p3Opbp), cont)
+    let tail = explicitTail exp
+    P3Program (emptyInfo, [ (startLabel, tail) ])
+
+let pass3 = explicitControl
 
