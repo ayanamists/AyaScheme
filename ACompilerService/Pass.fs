@@ -193,4 +193,8 @@ let selectInstructions (p3Prg, cs) =
 
 let pass4 = selectInstructions
 
+(*
+    Pass 5 : Register Allocation
+*)
+
 

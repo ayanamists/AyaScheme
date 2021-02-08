@@ -1,0 +1,5 @@
+﻿module Util
+
+type Graph =
+    
+

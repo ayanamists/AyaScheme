@@ -25,24 +25,16 @@ type Expr =
 | LetExp of ((Identifier * Expr) list) * Expr
 | OpExp of ExprOp * Expr * Expr
 
-let genSymInner init = 
-    let mutable idx = init
-    fun x ->
-        if x = 0 then
-            let thisIdx = idx
-            idx <- idx + 1
-            thisIdx
-        else
-            idx
 type Index = int
-type CompileState =  { newVarIdx : int -> int; }
-let emptyCompileState () = { newVarIdx = genSymInner 0; }
+type CompileState =  { mutable newVarIdx: Index; }
+let emptyCompileState () = { newVarIdx = 0; }
 let genSym state = 
-    let idx = (state.newVarIdx) 0
+    let idx = state.newVarIdx
+    state.newVarIdx <- idx + 1
     idx
 let getMaxIdxOfSym state =
-    let idx = state.newVarIdx 1
-    idx
+     state.newVarIdx 
+
 let ( *>>= ) p1 p2 = fun (x, cs) ->
     let (out, state) = p1 (x, cs)
     p2 (out, state)
