@@ -7,7 +7,7 @@ open Ast
 
 let testFunc data wanted = 
    match wanted , (Parser.parse data) with
-   | Error, Error -> Assert.True(true)
+   | Error _, Error _ -> Assert.True(true)
    | Ok res1, Ok res2 -> Assert.Equal(res1, res2) 
    | _ , Error y -> printfn "Should be %A, but occur error : %A" wanted y; Assert.True(false)
    | Error x, Ok y -> printfn "Should occur error, but is %A" y; Assert.True(false)

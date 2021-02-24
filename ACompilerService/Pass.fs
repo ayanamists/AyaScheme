@@ -54,8 +54,8 @@ let pass1 = lexicalAddress
 
 let isAtomPass1Out p1o = 
     match p1o with
-    | P1Id -> true
-    | P1Int -> true
+    | P1Id _ -> true
+    | P1Int _ -> true
     | _ -> false
 
 let anf (exp, cs) = 
