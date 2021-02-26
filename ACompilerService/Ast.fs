@@ -1,4 +1,4 @@
-﻿module Ast
+﻿module ACompilerService.Ast
 
 type Value = 
 | IntValue of int64
@@ -34,11 +34,6 @@ let genSym state =
     idx
 let getMaxIdxOfSym state =
      state.newVarIdx 
-
-let ( *>>= ) p1 p2 = fun (x, cs) ->
-    let (out, state) = p1 (x, cs)
-    p2 (out, state)
-
 
 type Pass1Out = 
 | P1Int of int64

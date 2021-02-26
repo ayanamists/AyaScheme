@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Utils.fs" />
     <Compile Include="Ast.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="Pass.fs" />

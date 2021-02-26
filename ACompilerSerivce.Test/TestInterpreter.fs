@@ -1,8 +1,8 @@
 ﻿module TestInterpreter
 
-open Parser
-open Ast
-open Interpreter
+open ACompilerService.Parser
+open ACompilerService.Ast
+open ACompilerService.Interpreter
 open Xunit
 open System
 

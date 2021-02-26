@@ -1,4 +1,4 @@
-﻿module Interpreter
+﻿module ACompilerService.Interpreter
 
 open Ast
 open FSharp.Collections

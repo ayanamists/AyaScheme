@@ -2,18 +2,20 @@
 
 open System
 open Xunit
-open Pass
-open Ast
-open Parser
+open ACompilerService.Pass
+open ACompilerService.Ast
+open ACompilerService.Parser
+open ACompilerService.Utils
 
-let toPass1 x = (parseToAst x, emptyCompileState ()) |> pass1
+let toPass1 x = parseToAst x |> pass1
+let testPass1 x = stateRun (toPass1 x) (emptyCompileState ()) 
 [<Fact>]
 let ``Pass 1 test 1`` () = 
     let prg = "(let ([a 1] [b 2]) (+ a b))"
     let wanted = 
         Pass1Out.P1LetExp ([(0, Pass1Out.P1Int 1L); (1, Pass1Out.P1Int 2L)],
             Pass1Out.P1OpExp (ExprOp.Add, Pass1Out.P1Id 0, Pass1Out.P1Id 1 ))
-    let (res, _) = toPass1 prg
+    let (res, _) = testPass1 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -25,7 +27,7 @@ let ``Pass 1 test 2`` () =
                                 ([(1, Pass1Out.P1Int 1L)], 
                                  (Pass1Out.P1OpExp (ExprOp.Add, Pass1Out.P1Id 1, Pass1Out.P1Int 1L)))));
                             (2, Pass1Out.P1Int 1L)], (Pass1Out.P1OpExp (ExprOp.Add, Pass1Out.P1Id 0, Pass1Out.P1Id 2)))
-    let (res, _) = toPass1 prg
+    let (res, _) = testPass1 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -34,7 +36,8 @@ let ``Pass 1 test 3`` () =
    Assert.Throws(typeof<VarNotBound>, 
        Action(fun () -> toPass1 prg |> ignore))
 
-let toPass2 x = toPass1 x |> pass2
+let toPass2 x = stateComb (toPass1 x) (fun x -> x |> pass2)
+let testPass2 x = stateRun (toPass2 x) (emptyCompileState ())
 
 let prgList = 
     [|
@@ -51,8 +54,8 @@ let ``Pass 2 test 1`` () =
     let wanted = 
         P2LetExp (0, P2Int 1L |> P2Atm
                    , P2LetExp (1, P2Int 2L |> P2Atm, P2OpExp (ExprOp.Add ,(P2Var 0), (P2Var 1))))
-    let (res, _) = prg |> toPass2
-    Assert.Equal(wanted, res) 
+    let (res, _) = testPass2 prg
+    Assert.Equal(wanted, res)
 
 [<Fact>]
 let ``Pass 2 test 2`` () =
@@ -63,7 +66,7 @@ let ``Pass 2 test 2`` () =
                  ,P2LetExp (1
                            ,P2OpExp (ExprOp.Add, P2Var 0, P2Int 3L)
                            ,P2OpExp (ExprOp.Div, P2Var 1, P2Int 4L)))
-    let (res, _) = prg |> toPass2
+    let (res, _) = testPass2 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -73,7 +76,7 @@ let ``Pass 2 test 3`` () =
         P2LetExp (0
                  ,P2IntAtm 1L
                  ,P2LetExp (1, P2IntAtm 2L, P2VarAtm 1))
-    let (res, _) = prg |> toPass2
+    let (res, _) = testPass2 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -87,10 +90,10 @@ let ``Pass 2 test 4`` () =
                                     ,P2OpExp (ExprOp.Sub, P2Var 0, P2Int 10L)
                                     ,P2OpExp (ExprOp.Add, P2Var 2, P2Int 3L))
                            ,P2OpExp (ExprOp.Div, P2Var 1, P2Int 4L)))
-    let (res, _) = prg |> toPass2
+    let (res, _) = testPass2 prg
     Assert.Equal(wanted, res)
-
-let toPass3 x = toPass2 x |> pass3
+(*
+let toPass3 x = stateComb (toPass2 x) (fun x -> x |> pass3)
 [<Fact>]
 let ``Pass 3 test 1`` () =
     let prg = prgList.[0]
@@ -211,3 +214,4 @@ let ``Pass 4 test 5`` () =
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
     let (res, _) = toPass4 prg 
     Assert.Equal(wanted, res)
+*)

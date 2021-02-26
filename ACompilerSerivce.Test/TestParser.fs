@@ -2,11 +2,11 @@ module TestParser
 
 open System
 open Xunit
-open Parser
-open Ast
+open ACompilerService.Parser
+open ACompilerService.Ast
 
 let testFunc data wanted = 
-   match wanted , (Parser.parse data) with
+   match wanted , (parse data) with
    | Error _, Error _ -> Assert.True(true)
    | Ok res1, Ok res2 -> Assert.Equal(res1, res2) 
    | _ , Error y -> printfn "Should be %A, but occur error : %A" wanted y; Assert.True(false)

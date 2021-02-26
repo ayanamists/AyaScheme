@@ -1,7 +1,7 @@
-﻿module Parser
+﻿module ACompilerService.Parser
 
 open FParsec
-open Ast
+open ACompilerService.Ast
 
 type SExpression = 
 | SId of string
@@ -56,23 +56,23 @@ let rec sExpToAst sexp =
             | SExp _ -> ExcepOfExpToAst ("Not Implement") |> raise 
 and letToAst lsexp = 
     match lsexp with
-    | (SExp sl) :: expr :: [] ->
+    | (SExp sl) :: [ expr ] ->
         ( ( List.map ( fun x ->
             match x with
-            | SExp (SId x :: y :: []) -> (x, sExpToAst y) 
+            | SExp (SId x :: [ y ]) -> (x, sExpToAst y) 
             | _ -> ExcepOfExpToAst ("Syntax error") |> raise) sl ), 
           sExpToAst expr ) |> LetExp
     | _ -> ExcepOfExpToAst ("Syntax error") |> raise
 and handleBOp1 op lsexp = 
     match lsexp with
-    | hd1 :: hd2 :: [] -> OpExp (op, sExpToAst hd1, sExpToAst hd2)
+    | hd1 :: [ hd2 ] -> OpExp (op, sExpToAst hd1, sExpToAst hd2)
     | hd1 :: hd2 :: tl -> 
         let Sop = SId (printOp op) in
         OpExp (op, sExpToAst hd1, SExp (Sop :: hd2 :: tl) |> sExpToAst)
     | _ -> ExcepOfExpToAst ("Syntax error") |> raise
 and handleBOp2 op lsexp = 
     match lsexp with
-    | hd1 :: hd2 :: [] -> OpExp (op, sExpToAst hd1, sExpToAst hd2) 
+    | hd1 :: [ hd2 ] -> OpExp (op, sExpToAst hd1, sExpToAst hd2) 
     | _ -> ExcepOfExpToAst ("Syntax error") |> raise
 
 let parseToAst code = 
