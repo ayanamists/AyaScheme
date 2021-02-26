@@ -25,3 +25,15 @@ type StateBuilder () =
     member x.Delay f = f ()
 
 let state = StateBuilder ()
+
+let stateMap f l =
+    let rec loop acc l =
+        match l with
+        | [] -> List.rev acc |> stateRet
+        | hd :: tl ->
+            state {
+                let! hd' = f hd
+                return! loop (hd' :: acc) tl
+            }
+    loop [] l
+    

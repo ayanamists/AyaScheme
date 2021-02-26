@@ -92,8 +92,9 @@ let ``Pass 2 test 4`` () =
                            ,P2OpExp (ExprOp.Div, P2Var 1, P2Int 4L)))
     let (res, _) = testPass2 prg
     Assert.Equal(wanted, res)
-(*
+    
 let toPass3 x = stateComb (toPass2 x) (fun x -> x |> pass3)
+let testPass3 x = stateRun (toPass3 x) (emptyCompileState ())
 [<Fact>]
 let ``Pass 3 test 1`` () =
     let prg = prgList.[0]
@@ -101,7 +102,7 @@ let ``Pass 3 test 1`` () =
                    ,P3Seq(P3Assign (1, p3IntAtm 2L)
                          ,P3Return (P3BPrim (ExprOp.Add, P3Var 0, P3Var 1))))
     let wanted = P3Program (emptyInfo, [ (startLabel, p3) ])
-    let (res, _) = toPass3 prg
+    let (res, _) = testPass3 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -111,7 +112,7 @@ let ``Pass 3 test 2`` () =
                    ,P3Seq (P3Assign (1, P3BPrim (ExprOp.Add, P3Var 0, P3Int 3L))
                           ,P3Return (P3BPrim (ExprOp.Div, P3Var 1, P3Int 4L))))
     let wanted = P3Program (emptyInfo, [ (startLabel, p3) ])
-    let (res, _) = toPass3 prg
+    let (res, _) = testPass3 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -121,7 +122,7 @@ let ``Pass 3 test 3`` () =
                    ,P3Seq (P3Assign (1, p3IntAtm 2L)
                           ,P3Return (p3VarAtm 1)))
     let wanted = P3Program (emptyInfo, [ (startLabel, p3) ])
-    let (res, _) = toPass3 prg
+    let (res, _) = testPass3 prg
     Assert.Equal(wanted, res)
 [<Fact>]
 let ``Pass 3 test 4 `` () =
@@ -131,10 +132,14 @@ let ``Pass 3 test 4 `` () =
                           ,P3Seq (P3Assign (1, P3BPrim (ExprOp.Add, P3Var 2, P3Int 3L))
                                  ,P3Return (P3BPrim (ExprOp.Div, P3Var 1, P3Int 4L)))))
     let wanted = P3Program (emptyInfo, [ (startLabel, p3) ])
-    let (res, _) =toPass3 prg 
+    let (res, _) =testPass3 prg 
     Assert.Equal(wanted, res)
 
-let toPass4 x = toPass3 x |> pass4
+let toPass4 x = state {
+    let! a = toPass3 x
+    return! (pass4 a)
+}
+let testPass4 x = stateRun (toPass4 x) (emptyCompileState ())
 [<Fact>]
 let ``Pass 4 test 1 `` () =
     let prg = prgList.[0]
@@ -147,7 +152,7 @@ let ``Pass 4 test 1 `` () =
             P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = toPass4 prg 
+    let (res, _) = testPass4 prg 
     Assert.Equal(wanted, res)
 [<Fact>]
 let ``Pass 4 test 2 `` () =
@@ -162,7 +167,7 @@ let ``Pass 4 test 2 `` () =
             P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = toPass4 prg 
+    let (res, _) = testPass4 prg 
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -176,7 +181,7 @@ let ``Pass 4 test 3 `` () =
             P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = toPass4 prg 
+    let (res, _) = testPass4 prg 
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -194,7 +199,7 @@ let ``Pass 4 test 4 `` () =
             P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = toPass4 prg 
+    let (res, _) = testPass4 prg 
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -212,6 +217,5 @@ let ``Pass 4 test 5`` () =
             P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = toPass4 prg 
+    let (res, _) = testPass4 prg 
     Assert.Equal(wanted, res)
-*)
