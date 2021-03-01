@@ -15,8 +15,6 @@ open Utils
                     (+ #3 #1)))
 *)
 
-exception VarNotBound of string
-exception Impossible of unit
 type Pass1BlockEnv = Map<Identifier, Index>
 type Pass1Env =  Pass1BlockEnv list
 let rec searchEnv (env:Pass1Env) var =
@@ -148,25 +146,25 @@ let isReg atm reg =
     | _ -> false
 
 let genFromBPrim op atm1 atm2 leftAtm = 
-    let case1 op a1 a2 = [ P4BOp (InstrOp.Mov, a2, leftAtm)
+    let case1 op a1 a2 = [ P4BOp (InstrBOp.Mov, a2, leftAtm)
                            P4BOp (op, a1, leftAtm) ] |> stateRet
-    let case2 op a1 a2 = [ P4BOp (InstrOp.Mov, a1, leftAtm)
+    let case2 op a1 a2 = [ P4BOp (InstrBOp.Mov, a1, leftAtm)
                            P4BOp (op, a2, leftAtm)] |> stateRet
     let case3 op a1 a2 = 
         if isReg leftAtm Reg.Rax
         then 
-            [P4BOp (InstrOp.Mov, a1, leftAtm)
+            [P4BOp (InstrBOp.Mov, a1, leftAtm)
              P4UOp (op, a2)] |> stateRet
         else
             state {
                 let! cs = stateGet                
                 let tempVar = genSym cs |> P4Var
                 return  [ 
-                   P4BOp (InstrOp.Mov, P4Reg Reg.Rax, tempVar )
-                   P4BOp (InstrOp.Mov, a1, P4Reg (Reg.Rax))
+                   P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, tempVar )
+                   P4BOp (InstrBOp.Mov, a1, P4Reg (Reg.Rax))
                    P4UOp (op, a2)
-                   P4BOp (InstrOp.Mov, P4Reg (Reg.Rax), leftAtm)
-                   P4BOp (InstrOp.Mov, tempVar, P4Reg Reg.Rax) ]
+                   P4BOp (InstrBOp.Mov, P4Reg (Reg.Rax), leftAtm)
+                   P4BOp (InstrBOp.Mov, tempVar, P4Reg Reg.Rax) ]
             }
     let newAtm1 = p3AtmToP4Atm atm1
     let newAtm2 = p3AtmToP4Atm atm2
@@ -174,18 +172,18 @@ let genFromBPrim op atm1 atm2 leftAtm =
         match op with
         | ExprOp.Add -> 
             match atm1, atm2 with
-            | P3Int i1, P3Var i2 -> case1 InstrOp.Add newAtm1 newAtm2
-            | P3Var i1, P3Int i2 -> case1 InstrOp.Add newAtm2 newAtm1
-            | P3Var i1, P3Var i2 -> case1 InstrOp.Add newAtm1 newAtm2
-            | P3Int i1, P3Int i2 -> case1 InstrOp.Add (P4Int i1) (P4Int i2)
+            | P3Int i1, P3Var i2 -> case1 InstrBOp.Add newAtm1 newAtm2
+            | P3Var i1, P3Int i2 -> case1 InstrBOp.Add newAtm2 newAtm1
+            | P3Var i1, P3Var i2 -> case1 InstrBOp.Add newAtm1 newAtm2
+            | P3Int i1, P3Int i2 -> case1 InstrBOp.Add (P4Int i1) (P4Int i2)
         | ExprOp.Sub -> 
             match atm1, atm2 with
-            | P3Int i1, P3Var i2 -> case2 InstrOp.Sub newAtm1 newAtm2
-            | P3Var i1, P3Int i2 -> case2 InstrOp.Sub newAtm1 newAtm2
-            | P3Var i1, P3Var i2 -> case2 InstrOp.Sub newAtm1 newAtm2
-            | P3Int i1, P3Int i2 -> case2 InstrOp.Sub (P4Int i1) (P4Int i2)
-        | ExprOp.Mult -> case3 InstrOp.IMul newAtm1 newAtm2
-        | ExprOp.Div -> case3 InstrOp.IDiv newAtm1 newAtm2
+            | P3Int i1, P3Var i2 -> case2 InstrBOp.Sub newAtm1 newAtm2
+            | P3Var i1, P3Int i2 -> case2 InstrBOp.Sub newAtm1 newAtm2
+            | P3Var i1, P3Var i2 -> case2 InstrBOp.Sub newAtm1 newAtm2
+            | P3Int i1, P3Int i2 -> case2 InstrBOp.Sub (P4Int i1) (P4Int i2)
+        | ExprOp.Mult -> case3 InstrUOp.IMul newAtm1 newAtm2
+        | ExprOp.Div -> case3 InstrUOp.IDiv newAtm1 newAtm2
         | _ -> Impossible () |> raise
     state {
         let! target = target
@@ -198,17 +196,17 @@ let selectInstructions p3Prg =
         | P3Seq (P3Assign (idx, p3Exp), tail) ->
             match p3Exp with
             | P3Atm atm -> 
-                let thisCode = P4BOp (InstrOp.Mov, p3AtmToP4Atm atm, idx |> P4Var)
+                let thisCode = P4BOp (InstrBOp.Mov, p3AtmToP4Atm atm, idx |> P4Var)
                 handleTail tail (thisCode :: acc)
             | P3BPrim (op, atm1, atm2) ->
                 state {
                     let! thisCode1 = genFromBPrim op atm1 atm2 (P4Var idx)
                     return! handleTail tail ( (List.rev thisCode1) @ acc ) }
         | P3Return (p3Exp) -> 
-            let retCode = P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
+            let retCode = P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
             match p3Exp with
             | P3Atm atm ->
-                let thisCode = P4BOp (InstrOp.Mov, p3AtmToP4Atm atm, P4Reg Reg.Rax)
+                let thisCode = P4BOp (InstrBOp.Mov, p3AtmToP4Atm atm, P4Reg Reg.Rax)
                 retCode :: thisCode :: acc |> List.rev |> stateRet
             | P3BPrim (op, atm1, atm2) ->
                 state {
@@ -231,5 +229,44 @@ let pass4 = selectInstructions
 (*
     Pass 5 : Register Allocation
 *)
-
-
+let regAlloc p4Prg =
+    let createInfGraph (l : Pass4Instr list) =
+        let handle1 instr (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) p =
+            let (r, w) = p4InstrRW instr
+            let s' = Set.difference s (Set w)
+            let g' = List.fold
+                         (fun g' writeV ->
+                            List.fold (fun g'' setV ->
+                                if (p writeV setV) then addEdge g'' writeV setV
+                                else g'')
+                                g' [for i in s' -> i]
+                         )
+                        g w
+            (s', g')
+        let rec loop l (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) =
+            let pBasic v1 v2 = not (v1 = v2)
+            match l with
+            | [] -> g
+            | [instr] -> handle1 instr g s pBasic |> snd
+            | instrNow :: instrLast :: tl ->
+                let (s' , g') = 
+                    match instrLast with
+                    | P4BOp (InstrBOp.Mov, atm1, atm2) ->
+                        let pNow v1 v2 = pBasic v1 v2 && not (v1 = atm1 && v2 = atm2) &&
+                                         not (v1 = atm2 && v2 = atm1)
+                        handle1 instrNow g s pNow
+                    | _ -> handle1 instrNow g s pBasic
+                loop (instrLast :: tl) g' s'
+        loop l (createGraph []) (Set [])
+        
+    let mergeBlocks (blocks:Pass4Block list) =
+        List.fold (fun l nowBlock ->
+            match nowBlock with
+            | (label, info, l') -> l @ l') [] blocks
+        
+    match p4Prg with
+    | P4Program (info, blocks) ->
+        let blocksForAssign = mergeBlocks blocks
+        let infGraph = createGraph blocksForAssign
+        ()
+        

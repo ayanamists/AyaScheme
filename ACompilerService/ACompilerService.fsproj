@@ -10,6 +10,7 @@
     <Compile Include="Parser.fs" />
     <Compile Include="Pass.fs" />
     <Compile Include="Interpreter.fs" />
+    <Compile Include="Coloring.fs" />
   </ItemGroup>
 
   <ItemGroup>

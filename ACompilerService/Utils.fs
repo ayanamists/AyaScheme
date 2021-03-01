@@ -1,5 +1,10 @@
 module ACompilerService.Utils
 
+open System
+
+exception VarNotBound of string
+exception Impossible of unit
+
 type State<'s, 'a> = St of ('s -> 'a * 's)
 
 let stateRet a = St (fun x -> (a, x))
@@ -37,3 +42,34 @@ let stateMap f l =
             }
     loop [] l
     
+type Graph<'s when 's : comparison > = G of Map<'s, Set<'s>>
+
+let createGraph (seq:seq<'T>) =
+    Map ([ for i in seq -> (i, Set []) ]) |> G
+    
+let addEdge (G vg) v1 v2 =
+    let changeV1 (o:Set<'a> option) =
+        match o with
+        | Some(s) -> Some (s.Add(v2))
+        | None -> Some (Set([v2]))
+    let changeV2 (o:Set<'a> option) =
+        match o with
+        | Some(l) -> Some (l.Add(v1))
+        | None -> Set ([v1]) |> Some
+    let vg1 = vg.Change(v1, changeV1)
+    vg1.Change(v2, changeV2) |> G
+
+let getNeighbor (G vg) v1 =
+    vg.TryFind(v1)
+
+let getAllVex (G vg) =
+    [ for (KeyValue(v, _)) in vg -> v ]
+
+let existVex (G vg) v =
+    vg.ContainsKey(v)
+
+let existEdge (G vg) v1 v2  =
+    vg.ContainsKey(v1) && vg.ContainsKey(v2) &&
+    match vg.TryFind(v1) with
+    | Some(l) -> l.Contains(v2)
+    | None -> Impossible () |> raise

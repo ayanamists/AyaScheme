@@ -145,11 +145,11 @@ let ``Pass 4 test 1 `` () =
     let prg = prgList.[0]
     let p4 =
         [ 
-            P4BOp (InstrOp.Mov, P4Int 1L, P4Var 0)
-            P4BOp (InstrOp.Mov, P4Int 2L, P4Var 1)
-            P4BOp (InstrOp.Mov, P4Var 1, P4Reg Reg.Rax)
-            P4BOp (InstrOp.Add, P4Var 0, P4Reg Reg.Rax)
-            P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
+            P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 0)
+            P4BOp (InstrBOp.Mov, P4Int 2L, P4Var 1)
+            P4BOp (InstrBOp.Mov, P4Var 1, P4Reg Reg.Rax)
+            P4BOp (InstrBOp.Add, P4Var 0, P4Reg Reg.Rax)
+            P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
     let (res, _) = testPass4 prg 
@@ -159,12 +159,12 @@ let ``Pass 4 test 2 `` () =
     let prg = prgList.[1]
     let p4 =
         [ 
-            P4BOp (InstrOp.Mov, P4Int 1L, P4Var 0)
-            P4BOp (InstrOp.Mov, P4Var 0, P4Var 1)
-            P4BOp (InstrOp.Add, P4Int 3L, P4Var 1)
-            P4BOp (InstrOp.Mov, P4Var 1, P4Reg Reg.Rax)
-            P4UOp (InstrOp.IDiv, P4Int 4L )
-            P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
+            P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 0)
+            P4BOp (InstrBOp.Mov, P4Var 0, P4Var 1)
+            P4BOp (InstrBOp.Add, P4Int 3L, P4Var 1)
+            P4BOp (InstrBOp.Mov, P4Var 1, P4Reg Reg.Rax)
+            P4UOp (InstrUOp.IDiv, P4Int 4L )
+            P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
     let (res, _) = testPass4 prg 
@@ -175,10 +175,10 @@ let ``Pass 4 test 3 `` () =
     let prg = prgList.[2]
     let p4 =
         [ 
-            P4BOp (InstrOp.Mov, P4Int 1L, P4Var 0)
-            P4BOp (InstrOp.Mov, P4Int 2L, P4Var 1)
-            P4BOp (InstrOp.Mov, P4Var 1, P4Reg Reg.Rax)
-            P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
+            P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 0)
+            P4BOp (InstrBOp.Mov, P4Int 2L, P4Var 1)
+            P4BOp (InstrBOp.Mov, P4Var 1, P4Reg Reg.Rax)
+            P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
     let (res, _) = testPass4 prg 
@@ -189,14 +189,14 @@ let ``Pass 4 test 4 `` () =
     let prg = prgList.[3]
     let p4 =
         [ 
-            P4BOp (InstrOp.Mov, P4Int 1L, P4Var 0)
-            P4BOp (InstrOp.Mov, P4Var 0, P4Var 2)
-            P4BOp (InstrOp.Sub, P4Int 10L, P4Var 2)
-            P4BOp (InstrOp.Mov, P4Var 2, P4Var 1)
-            P4BOp (InstrOp.Add, P4Int 3L, P4Var 1)
-            P4BOp (InstrOp.Mov, P4Var 1, P4Reg Reg.Rax)
-            P4UOp (InstrOp.IDiv, P4Int 4L)
-            P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
+            P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 0)
+            P4BOp (InstrBOp.Mov, P4Var 0, P4Var 2)
+            P4BOp (InstrBOp.Sub, P4Int 10L, P4Var 2)
+            P4BOp (InstrBOp.Mov, P4Var 2, P4Var 1)
+            P4BOp (InstrBOp.Add, P4Int 3L, P4Var 1)
+            P4BOp (InstrBOp.Mov, P4Var 1, P4Reg Reg.Rax)
+            P4UOp (InstrUOp.IDiv, P4Int 4L)
+            P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
     let (res, _) = testPass4 prg 
@@ -207,14 +207,14 @@ let ``Pass 4 test 5`` () =
     let prg = prgList.[4]
     let p4 = 
         [
-            P4BOp (InstrOp.Mov, P4Reg Reg.Rax, P4Var 1)
-            P4BOp (InstrOp.Mov, P4Int 10L, P4Reg Reg.Rax)
-            P4UOp (InstrOp.IMul, P4Int 1L)
-            P4BOp (InstrOp.Mov, P4Reg Reg.Rax, P4Var 0)
-            P4BOp (InstrOp.Mov, P4Var 1, P4Reg Reg.Rax)
-            P4BOp (InstrOp.Mov, P4Var 0, P4Reg Reg.Rax)
-            P4BOp (InstrOp.Add, P4Int 1L, P4Reg Reg.Rax)
-            P4CtrOp (InstrCtrOp.Jmp, conclusionLable)
+            P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, P4Var 1)
+            P4BOp (InstrBOp.Mov, P4Int 10L, P4Reg Reg.Rax)
+            P4UOp (InstrUOp.IMul, P4Int 1L)
+            P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, P4Var 0)
+            P4BOp (InstrBOp.Mov, P4Var 1, P4Reg Reg.Rax)
+            P4BOp (InstrBOp.Mov, P4Var 0, P4Reg Reg.Rax)
+            P4BOp (InstrBOp.Add, P4Int 1L, P4Reg Reg.Rax)
+            P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
     let (res, _) = testPass4 prg 

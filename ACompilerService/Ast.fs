@@ -1,5 +1,7 @@
 ﻿module ACompilerService.Ast
 
+open ACompilerService.Utils
+
 type Value = 
 | IntValue of int64
 
@@ -71,7 +73,7 @@ type Pass3Out =
 | P3Program of Pass3Info * Pass3Block list
 let emptyInfo = ""
 let startLabel = "_start"
-let conclusionLable = "conclusion"
+let conclusionLabel = "conclusion"
 let p3IntAtm i = P3Int i |> P3Atm
 let p3VarAtm i = P3Var i |> P3Atm
 
@@ -80,16 +82,18 @@ type Reg =
 | Rax = 0 | Rbx = 1 | Rcx = 2  | Rdx = 3  | Rsi = 4  | Rbi = 5  | Rsp = 6  | Rbp = 7
 | R8 = 8  | R9 = 9  | R10 = 10 | R11 = 11 | R12 = 12 | R13 = 13 | R14 = 14 | R15 = 15
 
-type InstrOp = 
-| Add = 0
-| Mov = 1
-| Sub = 2
+type InstrUOp = 
 | Neg = 3
 | Mul = 4
 | IMul = 5
 | IDiv = 6
 | Push = 7
 | Pop = 8
+
+type InstrBOp =
+| Add = 0
+| Mov = 1
+| Sub = 2
 
 type InstrCtrOp = 
 | Ret = 0
@@ -105,8 +109,8 @@ type Pass4Atm =
 | P4Reg of Reg
 type Pass4Instr = 
 | P4CtrOp of InstrCtrOp * Label
-| P4UOp of InstrOp * Pass4Atm
-| P4BOp of InstrOp * Pass4Atm * Pass4Atm
+| P4UOp of InstrUOp * Pass4Atm
+| P4BOp of InstrBOp * Pass4Atm * Pass4Atm
 type Pass4Block = Label * Info *  Pass4Instr list
 type Pass4Out = 
 | P4Program of Pass4Info * Pass4Block list
@@ -120,5 +124,46 @@ let isEqualP4Atm atm1 atm2 =
     | _ -> false
 let isUselessP4Instr instr = 
     match instr with
-    | P4BOp (InstrOp.Mov, atm1, atm2) -> isEqualP4Atm atm1 atm2
+    | P4BOp (InstrBOp.Mov, atm1, atm2) -> isEqualP4Atm atm1 atm2
     | _ -> false
+
+type MemOffset = int64
+
+type Pass5Info = Info
+type Pass5Label = Label 
+type Pass5Atm =
+| P5Int of int64
+| P5Reg of Reg
+| P5Stack of MemOffset
+type Pass5Instr = 
+| P5CtrOp of InstrCtrOp * Label
+| P5UOp of InstrUOp * Pass5Atm
+| P5BOp of InstrBOp * Pass5Atm * Pass5Atm
+type Pass5Block = Label * Info *  Pass5Instr list
+type Pass5Out = 
+| P5Program of Pass5Info * Pass5Block list
+
+let p4InstrRW instr =
+    let handleAtm atm =
+        match atm with
+        | P4Int _ -> []
+        | P4Var _ -> [atm]
+        | P4Reg _ -> [atm]
+    let comb res1 res2 =
+        let (r1, w1) = res1
+        let (r2, w2) = res2
+        (r1 @ r2, w1 @ w2)
+    match instr with
+    | P4CtrOp _ -> ([], [])
+    | P4UOp (op, atm) ->
+        match op with
+        | InstrUOp.Neg -> (handleAtm atm, handleAtm atm)
+        | InstrUOp.Mul | InstrUOp.IMul | InstrUOp.IDiv -> (handleAtm atm, [Reg.Rax |> P4Reg])
+        | InstrUOp.Push -> (handleAtm atm, [])
+        | InstrUOp.Pop -> ([], handleAtm atm)
+        | _ -> Impossible () |> raise
+    | P4BOp (op, atm1, atm2) ->
+        match op with
+        | InstrBOp.Add | InstrBOp.Sub -> (handleAtm atm1 @ handleAtm atm2, handleAtm atm2)
+        | InstrBOp.Mov -> (handleAtm atm1, handleAtm atm2)
+        | _ -> Impossible () |> raise
