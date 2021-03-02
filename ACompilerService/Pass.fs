@@ -229,6 +229,28 @@ let pass4 = selectInstructions
 (*
     Pass 5 : Register Allocation
 *)
+let removeEqual (l : Pass4Instr list) =
+    let compare atm1 atm2 = 
+        match atm1, atm2 with
+        | P4Reg r1 , P4Reg r2 -> r1 < r2
+        | P4Reg r1, P4Var v2 -> true
+        | P4Var v1, P4Reg r2 -> false
+        | P4Var v1, P4Var v2 -> v1 < v2
+    let changeAtm atm m =
+        match atm with
+        | P4Int t -> atm
+        | _ ->
+            match Map.tryFind atm m with
+            | Some atm' -> atm'
+            | None -> atm
+    let giveNewBOp m op atm1 atm2 = P4BOp (op, changeAtm atm1 m , changeAtm atm2 m)
+    let giveNewUOp m op atm = P4UOp (op, changeAtm atm m)
+    List.fold ( fun (l', g) instr ->
+        match instr with
+        | P4BOp (InstrBOp.Mov, atm1, atm2) ->
+           if existEdge g atm1 atm2 then (l', addEdge g atm1 atm2)
+           else giveNewBOp g
+    )
 let createInfGraph (l : Pass4Instr list) =
     let handle1 instr (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) p =
         let (r, w) = p4InstrRW instr
@@ -266,6 +288,6 @@ let regAlloc p4Prg =
     match p4Prg with
     | P4Program (info, blocks) ->
         let blocksForAssign = mergeBlocks blocks
-        let infGraph = createGraph blocksForAssign
+        let infGraph = createInfGraph blocksForAssign
         ()
         

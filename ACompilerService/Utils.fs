@@ -44,8 +44,8 @@ let stateMap f l =
     
 type Graph<'s when 's : comparison > = G of Map<'s, Set<'s>>
 
-let createGraph (seq:seq<'T>) =
-    Map ([ for i in seq -> (i, Set []) ]) |> G
+let createGraph (seq:seq<'T * seq<'T>>) =
+    Map ([ for (i, t) in seq -> (i, Set t) ]) |> G
     
 let addEdge (G vg) v1 v2 =
     let changeV1 (o:Set<'a> option) =
@@ -58,6 +58,9 @@ let addEdge (G vg) v1 v2 =
         | None -> Set ([v1]) |> Some
     let vg1 = vg.Change(v1, changeV1)
     vg1.Change(v2, changeV2) |> G
+
+let addEdges g l = 
+    List.fold (fun now (v1, v2) -> addEdge now v1 v2 ) g l
 
 let getNeighbor (G vg) v1 =
     vg.TryFind(v1)

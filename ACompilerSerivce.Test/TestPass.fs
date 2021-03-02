@@ -219,3 +219,16 @@ let ``Pass 4 test 5`` () =
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
     let (res, _) = testPass4 prg 
     Assert.Equal(wanted, res)
+
+[<Fact>]
+let ``Create InfGraph Test 1`` () =
+    let p4 = [
+        P4BOp (Instr.Mov, P4Int 10L, P4Var 1)
+        P4BOp (Instr.Mov, P4Var 1, P4Var 0)
+        P4BOp (Instr.Add, P4Var 1, P4Var 2)
+        P4BOp (Instr.Sub, P4Var 0, P4Var 1)
+    ]
+    let res = 
+        createGraph [|
+            ()
+        |]
