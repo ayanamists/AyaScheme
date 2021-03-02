@@ -228,7 +228,9 @@ let ``Create InfGraph Test 1`` () =
         P4BOp (Instr.Add, P4Var 1, P4Var 2)
         P4BOp (Instr.Sub, P4Var 0, P4Var 1)
     ]
-    let res = 
+    let wanted = 
         createGraph [|
-            ()
+            (P4Var 1, [|P4Var 2|])
+            (P4Var 2, [|P4var 1|])
         |]
+    
