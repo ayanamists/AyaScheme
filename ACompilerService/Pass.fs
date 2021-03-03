@@ -238,27 +238,29 @@ let removeTemp (l : Pass4Instr list) =
                      | Some (P4Var i') -> P4Var i'
                      | _ -> atm
         | _ -> atm
-        
     let rec loop l m acc =
         match l with
         | [] -> acc
         | instr :: tl ->
-            let newM =
-                match instr with
-                | P4BOp (InstrBOp.Mov, atm1, atm2) ->
-                    let newAtm1 = changeAtm m atm1
-                    Map.change atm2 (changeMov atm2 newAtm1) m
-                | P4BOp _ | P4UOp _ | P4CtrOp _  ->  
-                    let (r, w) = p4InstrRW instr
-                    List.fold (fun m x -> Map.change x changeWrite m) m w
-            let changeAtm' = changeAtm m
-            let newInstr =
-                match instr with
-                | P4BOp (op, atm1, atm2) -> P4BOp (op, changeAtm' atm1, changeAtm' atm2)
-                | P4UOp (op, atm1) -> P4UOp (op, changeAtm' atm1)
-                | _ -> instr
-            loop tl newM (newInstr :: acc)
-            
+            match instr with
+            | P4BOp (InstrBOp.Mov, atm1, atm2) ->
+                let newAtm1 = changeAtm m atm1
+                let newM = Map.change atm2 (changeMov atm2 newAtm1) m
+                let newInstr = P4BOp (InstrBOp.Mov, newAtm1, atm2)
+                loop tl newM (newInstr :: acc)
+            | P4BOp (op, atm1, atm2) ->
+                let (r, w) = p4InstrRW instr
+                let newM = List.fold (fun m x -> Map.change x changeWrite m) m w
+                let changeAtm' = changeAtm m
+                let newInstr = P4BOp (op, changeAtm' atm1, changeAtm' atm2)
+                loop tl newM (newInstr :: acc)
+            | P4UOp (op, atm1) ->
+                let (r, w) = p4InstrRW instr
+                let newM = List.fold (fun m x -> Map.change x changeWrite m) m w
+                let changeAtm' = changeAtm m
+                let newInstr = P4UOp (op, changeAtm' atm1 )
+                loop tl newM (newInstr :: acc)
+            | P4CtrOp _ -> loop tl m (instr :: acc)
     loop l (Map []) [] |> List.rev
 let createInfGraph (l : Pass4Instr list) =
     let handle1 instr (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) p =
