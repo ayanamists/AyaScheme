@@ -44,7 +44,7 @@ let stateMap f l =
     
 type Graph<'s when 's : comparison > = G of Map<'s, Set<'s>>
 
-let createGraph (seq:seq<'T * seq<'T>>) =
+let createGraph (seq:('T * 'T array) array) =
     Map ([ for (i, t) in seq -> (i, Set t) ]) |> G
     
 let addEdge (G vg) v1 v2 =

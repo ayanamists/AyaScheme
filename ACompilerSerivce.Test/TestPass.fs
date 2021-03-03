@@ -223,14 +223,57 @@ let ``Pass 4 test 5`` () =
 [<Fact>]
 let ``Create InfGraph Test 1`` () =
     let p4 = [
-        P4BOp (Instr.Mov, P4Int 10L, P4Var 1)
-        P4BOp (Instr.Mov, P4Var 1, P4Var 0)
-        P4BOp (Instr.Add, P4Var 1, P4Var 2)
-        P4BOp (Instr.Sub, P4Var 0, P4Var 1)
+        P4BOp (InstrBOp.Mov, P4Int 10L, P4Var 1)
+        P4BOp (InstrBOp.Mov, P4Var 1, P4Var 0)
+        P4BOp (InstrBOp.Add, P4Var 1, P4Var 2)
+        P4BOp (InstrBOp.Sub, P4Var 0, P4Var 1)
     ]
-    let wanted = 
-        createGraph [|
+    let wanted = createGraph [|
             (P4Var 1, [|P4Var 2|])
-            (P4Var 2, [|P4var 1|])
+            (P4Var 2, [|P4Var 1|])
         |]
+    let res = createInfGraph (removeTemp p4)
+    Assert.Equal(wanted, res)
+
+[<Fact>]
+let ``remove Temp Test 1`` () =
+    let p4 = [
+        P4BOp (InstrBOp.Mov, P4Var 0, P4Var 1)
+        P4BOp (InstrBOp.Mov, P4Var 1, P4Var 2)
+        P4BOp (InstrBOp.Mov, P4Var 2, P4Var 3)
+    ]
+    let wanted = [
+         P4BOp (InstrBOp.Mov, P4Var 0, P4Var 1)
+         P4BOp (InstrBOp.Mov, P4Var 0, P4Var 2)
+         P4BOp (InstrBOp.Mov, P4Var 0, P4Var 3)
+    ]
+    let res = removeTemp p4
+    Assert.Equal<Pass4Instr list>(res, wanted)
+
+[<Fact>]
+let  ``remove Temp Test 2`` () =
+    let p4 = [
+        P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, P4Var 1)
+        P4BOp (InstrBOp.Mov, P4Int 10L, P4Reg Reg.Rax)
+        P4UOp (InstrUOp.IMul, P4Int 1L)
+        P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, P4Var 0)
+        P4BOp (InstrBOp.Mov, P4Var 1, P4Reg Reg.Rax)
+        P4BOp (InstrBOp.Mov, P4Var 0, P4Reg Reg.Rax)
+        P4BOp (InstrBOp.Add, P4Int 1L, P4Reg Reg.Rax)
+        P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
+    ]
+    let wanted = [
+        P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, P4Var 1)
+        P4BOp (InstrBOp.Mov, P4Int 10L, P4Reg Reg.Rax)
+        P4UOp (InstrUOp.IMul, P4Int 1L)
+        P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, P4Var 0)
+        P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, P4Reg Reg.Rax)
+        P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, P4Reg Reg.Rax)
+        P4BOp (InstrBOp.Add, P4Int 1L, P4Reg Reg.Rax)
+        P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
+    ]
+    let res = removeTemp wanted
+    Assert.Equal<Pass4Instr list>(res, wanted)
+        
+        
     

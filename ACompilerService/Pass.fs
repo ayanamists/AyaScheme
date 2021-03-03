@@ -234,9 +234,10 @@ let removeTemp (l : Pass4Instr list) =
     let changeWrite atm1 = None
     let changeAtm m atm =
         match atm with
-        | P4Var i -> match Map.tryFind atm m with
-                     | Some (P4Var i') -> P4Var i'
-                     | _ -> atm
+        | P4Var _ | P4Reg _ -> match Map.tryFind atm m with
+                               | Some (P4Var i') -> P4Var i'
+                               | Some (P4Reg r) -> P4Reg r
+                               |_ -> atm
         | _ -> atm
     let rec loop l m acc =
         match l with
@@ -265,31 +266,29 @@ let removeTemp (l : Pass4Instr list) =
 let createInfGraph (l : Pass4Instr list) =
     let handle1 instr (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) p =
         let (r, w) = p4InstrRW instr
+        printfn "read : %A, write: %A" r w
         let s' = Set.difference s (Set w)
         let g' = List.fold
-                     (fun g' writeV ->
+                     (fun g' readV ->
                         List.fold (fun g'' setV ->
-                            if (p writeV setV) then addEdge g'' writeV setV
+                            if (p readV setV) then
+                                printfn "writeV : %A,setV : %A" readV setV
+                                addEdge g'' readV setV
                             else g'')
                             g' [for i in s' -> i]
                      )
-                    g w
+                    g r
         (s', g')
     let rec loop l (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) =
+        printfn "s:%A, g:%A" s g
         let pBasic v1 v2 = not (v1 = v2)
         match l with
         | [] -> g
         | [instr] -> handle1 instr g s pBasic |> snd
-        | instrNow :: instrLast :: tl ->
-            let (s' , g') = 
-                match instrLast with
-                | P4BOp (InstrBOp.Mov, atm1, atm2) ->
-                    let pNow v1 v2 = pBasic v1 v2 && not (v1 = atm1 && v2 = atm2) &&
-                                     not (v1 = atm2 && v2 = atm1)
-                    handle1 instrNow g s pNow
-                | _ -> handle1 instrNow g s pBasic
-            loop (instrLast :: tl) g' s'
-    loop l (createGraph []) (Set [])
+        | instrNow :: tl ->
+            let (s' , g') = handle1 instrNow g s pBasic
+            loop tl g' s'
+    loop l (createGraph [||]) (Set [])
 let regAlloc p4Prg =
     let mergeBlocks (blocks:Pass4Block list) =
         List.fold (fun l nowBlock ->
