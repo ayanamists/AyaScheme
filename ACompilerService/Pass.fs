@@ -235,8 +235,7 @@ let removeTemp (l : Pass4Instr list) =
     let changeAtm m atm =
         match atm with
         | P4Var _ | P4Reg _ -> match Map.tryFind atm m with
-                               | Some (P4Var i') -> P4Var i'
-                               | Some (P4Reg r) -> P4Reg r
+                               | Some t -> t
                                |_ -> atm
         | _ -> atm
     let rec loop l m acc =
@@ -253,34 +252,40 @@ let removeTemp (l : Pass4Instr list) =
                 let (r, w) = p4InstrRW instr
                 let newM = List.fold (fun m x -> Map.change x changeWrite m) m w
                 let changeAtm' = changeAtm m
-                let newInstr = P4BOp (op, changeAtm' atm1, changeAtm' atm2)
+                let newInstr = P4BOp (op, changeAtm' atm1, atm2)
                 loop tl newM (newInstr :: acc)
             | P4UOp (op, atm1) ->
                 let (r, w) = p4InstrRW instr
                 let newM = List.fold (fun m x -> Map.change x changeWrite m) m w
                 let changeAtm' = changeAtm m
-                let newInstr = P4UOp (op, changeAtm' atm1 )
+                let newAtm = if List.exists (fun x -> x = atm1) w
+                             then atm1 else changeAtm' atm1
+                let newInstr = P4UOp (op, newAtm)
                 loop tl newM (newInstr :: acc)
             | P4CtrOp _ -> loop tl m (instr :: acc)
     loop l (Map []) [] |> List.rev
 let createInfGraph (l : Pass4Instr list) =
     let handle1 instr (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) p =
         let (r, w) = p4InstrRW instr
-        printfn "read : %A, write: %A" r w
+        // printfn "read : %A, write: %A" r w
         let s' = Set.difference s (Set w)
-        let g' = List.fold
-                     (fun g' readV ->
-                        List.fold (fun g'' setV ->
-                            if (p readV setV) then
-                                printfn "writeV : %A,setV : %A" readV setV
-                                addEdge g'' readV setV
-                            else g'')
-                            g' [for i in s' -> i]
-                     )
-                    g r
-        (s', g')
+        // printfn "s' : %A" s'
+        let (s'', g') = List.fold
+                             (fun (s, g') readV ->
+                                (
+                                     Set.add readV s, 
+                                     List.fold (fun g'' setV ->
+                                        if (p readV setV) then
+                                            // printfn "writeV : %A,setV : %A" readV setV
+                                            addEdge g'' readV setV
+                                        else g'')
+                                        g' [for i in s -> i]
+                                 )
+                             )
+                            (s', g) r
+        (s'', g')
     let rec loop l (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) =
-        printfn "s:%A, g:%A" s g
+        // printfn "s:%a, g:%a" s g
         let pBasic v1 v2 = not (v1 = v2)
         match l with
         | [] -> g
@@ -288,7 +293,7 @@ let createInfGraph (l : Pass4Instr list) =
         | instrNow :: tl ->
             let (s' , g') = handle1 instrNow g s pBasic
             loop tl g' s'
-    loop l (createGraph [||]) (Set [])
+    loop (List.rev l) (createGraph [||]) (Set [])
 let regAlloc p4Prg =
     let mergeBlocks (blocks:Pass4Block list) =
         List.fold (fun l nowBlock ->

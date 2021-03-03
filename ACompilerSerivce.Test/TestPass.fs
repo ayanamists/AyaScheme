@@ -219,6 +219,41 @@ let ``Pass 4 test 5`` () =
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
     let (res, _) = testPass4 prg 
     Assert.Equal(wanted, res)
+    
+let regAllocSTestCase = [
+    P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 0)
+    P4BOp (InstrBOp.Mov, P4Int 42L, P4Var 1)
+    P4BOp (InstrBOp.Mov, P4Var 0, P4Var 2)
+    P4BOp (InstrBOp.Add, P4Int 7L, P4Var 2)
+    P4BOp (InstrBOp.Mov, P4Var 2, P4Var 3)
+    P4BOp (InstrBOp.Mov, P4Var 2, P4Var 4)
+    P4BOp (InstrBOp.Add, P4Var 1, P4Var 4)
+    P4BOp (InstrBOp.Mov, P4Var 3, P4Var 5)
+    P4UOp (InstrUOp.Neg, P4Var 5)
+    P4BOp (InstrBOp.Mov, P4Var 4, P4Reg Reg.Rax)
+    P4BOp (InstrBOp.Add, P4Var 5, P4Reg Reg.Rax)
+]
+let regAllocTestCaseRemoveTemp = [
+    P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 0)
+    P4BOp (InstrBOp.Mov, P4Int 42L, P4Var 1)
+    P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 2)
+    P4BOp (InstrBOp.Add, P4Int 7L, P4Var 2)
+    P4BOp (InstrBOp.Mov, P4Var 2, P4Var 3)
+    P4BOp (InstrBOp.Mov, P4Var 2, P4Var 4)
+    P4BOp (InstrBOp.Add, P4Int 42L, P4Var 4)
+    P4BOp (InstrBOp.Mov, P4Var 2, P4Var 5)
+    P4UOp (InstrUOp.Neg, P4Var 5)
+    P4BOp (InstrBOp.Mov, P4Var 4, P4Reg Reg.Rax)
+    P4BOp (InstrBOp.Add, P4Var 5, P4Reg Reg.Rax)
+]
+let regAllocTestCaseInfGraph = createGraph [|
+    (P4Reg Reg.Rax, [| P4Var 5 |])
+    (P4Var 4, [| P4Var 5 ; P4Var 2|])
+    (P4Var 2, [| P4Var 4 |])
+    (P4Var 5, [| P4Reg Reg.Rax ; P4Var 4 |])
+|]
+
+let testCreateInfGraph x = removeTemp x |> createInfGraph
 
 [<Fact>]
 let ``Create InfGraph Test 1`` () =
@@ -229,12 +264,18 @@ let ``Create InfGraph Test 1`` () =
         P4BOp (InstrBOp.Sub, P4Var 0, P4Var 1)
     ]
     let wanted = createGraph [|
-            (P4Var 1, [|P4Var 2|])
-            (P4Var 2, [|P4Var 1|])
-        |]
+        (P4Var 1, [|P4Var 2|])
+        (P4Var 2, [|P4Var 1|])
+    |]
     let res = createInfGraph (removeTemp p4)
     Assert.Equal(wanted, res)
 
+[<Fact>]
+let ``create InfGraph Test 2`` () =
+    let res = testCreateInfGraph regAllocTestCaseRemoveTemp
+    let wanted = regAllocTestCaseInfGraph
+    Assert.Equal(wanted, res)
+    
 [<Fact>]
 let ``remove Temp Test 1`` () =
     let p4 = [
@@ -273,7 +314,12 @@ let  ``remove Temp Test 2`` () =
         P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
     ]
     let res = removeTemp wanted
-    Assert.Equal<Pass4Instr list>(res, wanted)
-        
+    Assert.Equal<Pass4Instr list>(wanted, res)
+
+[<Fact>]
+let ``remove Temp test 3`` () =
+    let wanted = regAllocTestCaseRemoveTemp
+    let res = removeTemp regAllocSTestCase
+    Assert.Equal<Pass4Instr list>(wanted, res)
         
     
