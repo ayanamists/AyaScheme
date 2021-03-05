@@ -9,12 +9,20 @@ open FsCheck.Xunit
 open ACompilerService.Coloring
 open ACompilerService.Utils
 
+let CanUse x n = x >= 0 && x < n
+let fix x y n =
+    if CanUse (x - 1) n
+    then
+        if CanUse (y + 1) n then (x - 1, y + 1) else (x - 1, y)
+    else
+        if CanUse (y - 1) n then (x + 1, y - 1) else (x + 1 , y)
+
 let genPairGraph n = gen {
     let i = Gen.choose (0, n - 1)
     let j = Gen.choose (0, n - 1)
     let eCount' = Gen.choose (1, n * n)
-    let! eCount = Gen.map (((*)) 2) eCount'
-    let pair = Gen.map2 (fun x y -> (x, y)) i j
+    let! eCount = Gen.map ((( * )) 2) eCount'
+    let pair = Gen.map2 (fun x y -> if x = y then fix x y n else (x, y)) i j
     return Gen.sample 0 eCount pair
 }
 
@@ -99,3 +107,17 @@ let ``All Color Exists`` (g:Graph<int>) =
         | now :: tl -> if Set.contains now s then test tl else false
     test [0 .. max - 1]
     
+[<Property(Arbitrary=[|typeof<GraphGenerators>|])>]
+let ``Vex Color Requirement`` (g:Graph<int>) =
+    not (isEmptyGraph g) ==> lazy
+    let m = coloringGraph g
+    let vexs = getAllVex g
+    let rec test l =
+        match l with
+        | [] -> true
+        | now :: tl ->
+            let neighbors = getNeighbor g now
+            let myColor = Map.find now m
+            let colors = List.map (fun x -> Map.find x m) neighbors
+            (not (List.contains myColor colors)) && test tl
+    test vexs
