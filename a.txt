@@ -1,7 +1,5 @@
   正在确定要还原的项目…
   所有项目均是最新的，无法还原。
-/home/ayanamists/source/AyaScheme/ACompilerService/Pass.fs(84,26): warning FS0025: 此表达式中的模式匹配不完整。 例如，值“[_;_;_]”可以指示模式未涵盖的用例。 [/home/ayanamists/source/AyaScheme/ACompilerService/ACompilerService.fsproj]
-/home/ayanamists/source/AyaScheme/ACompilerService/Interpreter.fs(14,7): warning FS0026: 从不与此规则匹配 [/home/ayanamists/source/AyaScheme/ACompilerService/ACompilerService.fsproj]
   ACompilerService -> /home/ayanamists/source/AyaScheme/ACompilerService/bin/Debug/netcoreapp5/ACompilerService.dll
   ACompilerSerivce.Test -> /home/ayanamists/source/AyaScheme/ACompilerSerivce.Test/bin/Debug/netcoreapp5/ACompilerSerivce.Test.dll
 /home/ayanamists/source/AyaScheme/ACompilerSerivce.Test/bin/Debug/netcoreapp5/ACompilerSerivce.Test.dll 的测试运行(.NETCoreApp,Version=v5.0)
@@ -10,38 +8,15 @@ Microsoft (R) 测试执行命令行工具版本 16.8.3
 
 正在启动测试执行，请稍候...
 总共 1 个测试文件与指定模式相匹配。
-s:set [], g:G (map [])
-s:set [P4Var 1], g:G (map [])
-s:set [P4Var 1; P4Var 2], g:G (map [(P4Var 1, set [P4Var 2]); (P4Var 2, set [P4Var 1])])
-s:set [P4Var 1; P4Var 2], g:G (map [(P4Var 1, set [P4Var 2]); (P4Var 2, set [P4Var 1])])
-s:set [], g:G (map [])
-s:set [P4Var 5; P4Reg Rax], g:G (map [(P4Var 5, set [P4Reg Rax]); (P4Reg Rax, set [P4Var 5])])
-s:set [P4Var 4; P4Var 5], g:G (map
-     [(P4Var 4, set [P4Var 5]); (P4Var 5, set [P4Var 4; P4Reg Rax]);
-      (P4Reg Rax, set [P4Var 5])])
-s:set [P4Var 4; P4Var 5], g:G (map
-     [(P4Var 4, set [P4Var 5]); (P4Var 5, set [P4Var 4; P4Reg Rax]);
-      (P4Reg Rax, set [P4Var 5])])
-s:set [P4Var 2; P4Var 4], g:G (map
-     [(P4Var 2, set [P4Var 4]); (P4Var 4, set [P4Var 2; P4Var 5]);
-      (P4Var 5, set [P4Var 4; P4Reg Rax]); (P4Reg Rax, set [P4Var 5])])
-s:set [P4Var 2; P4Var 4], g:G (map
-     [(P4Var 2, set [P4Var 4]); (P4Var 4, set [P4Var 2; P4Var 5]);
-      (P4Var 5, set [P4Var 4; P4Reg Rax]); (P4Reg Rax, set [P4Var 5])])
-s:set [P4Var 2], g:G (map
-     [(P4Var 2, set [P4Var 4]); (P4Var 4, set [P4Var 2; P4Var 5]);
-      (P4Var 5, set [P4Var 4; P4Reg Rax]); (P4Reg Rax, set [P4Var 5])])
-s:set [P4Var 2], g:G (map
-     [(P4Var 2, set [P4Var 4]); (P4Var 4, set [P4Var 2; P4Var 5]);
-      (P4Var 5, set [P4Var 4; P4Reg Rax]); (P4Reg Rax, set [P4Var 5])])
-s:set [P4Var 2], g:G (map
-     [(P4Var 2, set [P4Var 4]); (P4Var 4, set [P4Var 2; P4Var 5]);
-      (P4Var 5, set [P4Var 4; P4Reg Rax]); (P4Reg Rax, set [P4Var 5])])
-s:set [], g:G (map
-     [(P4Var 2, set [P4Var 4]); (P4Var 4, set [P4Var 2; P4Var 5]);
-      (P4Var 5, set [P4Var 4; P4Reg Rax]); (P4Reg Rax, set [P4Var 5])])
-s:set [], g:G (map
-     [(P4Var 2, set [P4Var 4]); (P4Var 4, set [P4Var 2; P4Var 5]);
-      (P4Var 5, set [P4Var 4; P4Reg Rax]); (P4Reg Rax, set [P4Var 5])])
+  失败 ACompilerSerivce.Test.TestColoring.all Vex Has Color [141 ms]
+  错误消息:
+   FsCheck.Xunit.PropertyFailedException : 
+Falsifiable, after 11 tests (5 shrinks) (StdGen (2095970328, 296861721)):
+Original:
+G (map [(-1, set [-2]); (0, set [])])
+Shrunk:
+G (map [(0, set [1])])
 
-已通过! - Failed:     0, Passed:    35, Skipped:     0, Total:    35, Duration: 181 ms- /home/ayanamists/source/AyaScheme/ACompilerSerivce.Test/bin/Debug/netcoreapp5/ACompilerSerivce.Test.dll (net5.0)
+
+
+失败!  - Failed:     1, Passed:    41, Skipped:     0, Total:    42, Duration: 1 s- /home/ayanamists/source/AyaScheme/ACompilerSerivce.Test/bin/Debug/netcoreapp5/ACompilerSerivce.Test.dll (net5.0)

@@ -1,6 +1,7 @@
 module ACompilerService.Utils
 
 open System
+open System.Xml.Schema
 
 exception VarNotBound of string
 exception Impossible of unit
@@ -63,7 +64,10 @@ let addEdges g l =
     List.fold (fun now (v1, v2) -> addEdge now v1 v2 ) g l
 
 let getNeighbor (G vg) v1 =
-    vg.TryFind(v1)
+    let s = vg.TryFind(v1)
+    match s with
+    | Some s -> [ for i in s -> i  ]
+    | None   -> []
 
 let getAllVex (G vg) =
     [ for (KeyValue(v, _)) in vg -> v ]
@@ -76,3 +80,25 @@ let existEdge (G vg) v1 v2  =
     match vg.TryFind(v1) with
     | Some(l) -> l.Contains(v2)
     | None -> Impossible () |> raise
+
+let allEdges (G vg) =
+    let foldF res (v, s) =
+        Set.union res (Set [for i in s -> (v, i)])
+    List.fold foldF (Set []) [for KeyValue(i, j) in vg -> (i, j)]
+
+let isIllegalGraph (G vg) =
+    let vexs = getAllVex (G vg) |> Set
+    let allE = allEdges (G vg)
+    let rec edgeIllegal1 l =
+        match l with
+        | [] -> true
+        | (_, s) :: tl -> Set.isSubset s vexs && edgeIllegal1 tl
+    let rec edgeIllegal2 l=
+        match l with
+        | [] -> true
+        | (i, j) :: tl -> Set.contains (j, i) allE && edgeIllegal2 tl
+    edgeIllegal1 [for KeyValue(i, j) in vg -> (i, j)] &&
+    edgeIllegal2 [for i in allE -> i]
+
+let isEmptyGraph (G vg) =
+    Map.isEmpty vg

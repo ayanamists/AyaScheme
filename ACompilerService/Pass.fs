@@ -230,8 +230,8 @@ let pass4 = selectInstructions
     Pass 5 : Register Allocation
 *)
 let removeTemp (l : Pass4Instr list) =
-    let changeMov atm2 atm1 = fun x -> Some atm1
-    let changeWrite atm1 = None
+    let changeMov _ atm1 = fun _ -> Some atm1
+    let changeWrite _ = None
     let changeAtm m atm =
         match atm with
         | P4Var _ | P4Reg _ -> match Map.tryFind atm m with
