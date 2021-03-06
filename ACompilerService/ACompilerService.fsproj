@@ -6,11 +6,11 @@
 
   <ItemGroup>
     <Compile Include="Utils.fs" />
+    <Compile Include="Coloring.fs" />
     <Compile Include="Ast.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="Pass.fs" />
     <Compile Include="Interpreter.fs" />
-    <Compile Include="Coloring.fs" />
   </ItemGroup>
 
   <ItemGroup>

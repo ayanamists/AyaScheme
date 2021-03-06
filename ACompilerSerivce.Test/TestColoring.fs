@@ -38,10 +38,6 @@ type GraphGenerators =
             override x.Generator = genGraph
             override x.Shrinker t = Seq.empty}
         
-let maxColor m =     
-    let c = Map.toList m |> List.map (fun (_, c) -> c)
-    List.sortDescending c |> List.head |> (+) 1
-
 [<Fact>]
 let ``maxColor Test 1`` () =
     let g = createGraph [|
@@ -49,7 +45,7 @@ let ``maxColor Test 1`` () =
         (0, [|1; 2|])
         (2, [|1; 0|])
     |]
-    let m = coloringGraph g
+    let m = coloringGraph g 
     Assert.Equal(3, maxColor m)
 
 [<Fact>]

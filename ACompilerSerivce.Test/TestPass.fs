@@ -322,4 +322,90 @@ let ``remove Temp test 3`` () =
     let res = removeTemp regAllocSTestCase
     Assert.Equal<Pass4Instr list>(wanted, res)
         
+let pass5 = regAlloc
+let toPass5 x = state {
+    let! t = toPass4 x
+    return! pass5 t}
+let testPass5 x = stateRun (toPass5 x) (emptyCompileState ()) |> fst
+
+[<Fact>]
+let ``reg Alloc Test 1`` () =
+    let prg = prgList.[0]
+    let p5 = [ 
+        P5BOp (InstrBOp.Mov, P5Int 2L, P5Reg Reg.Rax)
+        P5BOp (InstrBOp.Add, P5Int 1L, P5Reg Reg.Rax)
+        P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
+    ]
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let res = testPass5 prg
+    Assert.Equal(wanted, res)
     
+[<Fact>]
+let ``reg Alloc Test 2`` () =
+    let prg = prgList.[1]
+    let p5 = 
+        [ 
+            P5BOp (InstrBOp.Mov, P5Int 1L, P5Reg Reg.Rax)
+            P5BOp (InstrBOp.Add, P5Int 3L, P5Reg Reg.Rax)
+            P5UOp (InstrUOp.IDiv, P5Int 4L )
+            P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
+        ]
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let res = testPass5 prg
+    Assert.Equal(wanted, res)
+    
+
+[<Fact>]
+let ``reg Alloc Test 3`` () =
+    let prg = prgList.[2]
+    let p5 = 
+         [ 
+             P5BOp (InstrBOp.Mov, P5Int 2L, P5Reg Reg.Rax)
+             P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
+         ]
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let res = testPass5 prg
+    Assert.Equal(wanted, res)
+    
+[<Fact>]
+let ``reg Alloc Test 4`` () =
+    let prg = prgList.[3]
+    let p5 =
+         [ 
+             P5BOp (InstrBOp.Mov, P5Int 1L, P5Reg Reg.Rax)
+             P5BOp (InstrBOp.Sub, P5Int 10L, P5Reg Reg.Rax)
+             P5BOp (InstrBOp.Add, P5Int 3L, P5Reg Reg.Rax)
+             P5UOp (InstrUOp.IDiv, P5Int 4L)
+             P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
+         ]
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let res = testPass5 prg
+    Assert.Equal(wanted, res)
+    
+[<Fact>]
+let ``reg Alloc Test 5`` () =
+    let prg = prgList.[4]
+    let p5 = [
+         P5BOp (InstrBOp.Mov, P5Int 10L, P5Reg Reg.Rax)
+         P5UOp (InstrUOp.IMul, P5Int 1L)
+         P5BOp (InstrBOp.Add, P5Int 1L, P5Reg Reg.Rax)
+         P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
+     ]
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let res = testPass5 prg
+    Assert.Equal(wanted, res)
+
+[<Fact>]
+let ``reg Alloc Test 6`` () =
+    let p4 = P4Program (emptyInfo , [ (startLabel, emptyInfo, regAllocTestCaseRemoveTemp)  ]) |> stateRet
+    let res = stateRun (stateComb p4 regAlloc) (emptyCompileState ()) |> fst
+    let p5 = [
+       P5BOp (InstrBOp.Mov, P5Int 1L, P5Reg Reg.Rcx)
+       P5BOp (InstrBOp.Add, P5Int 7L, P5Reg Reg.Rcx)
+       P5BOp (InstrBOp.Mov, P5Reg Reg.Rcx, P5Reg Reg.Rax)
+       P5BOp (InstrBOp.Add, P5Int 42L, P5Reg Reg.Rax)
+       P5UOp (InstrUOp.Neg, P5Reg Reg.Rcx)
+       P5BOp (InstrBOp.Add, P5Reg Reg.Rcx, P5Reg Reg.Rax)
+    ]
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    Assert.Equal(wanted, res)

@@ -86,6 +86,12 @@ let allEdges (G vg) =
         Set.union res (Set [for i in s -> (v, i)])
     List.fold foldF (Set []) [for KeyValue(i, j) in vg -> (i, j)]
 
+let addVex (G vg) v =
+    match Map.containsKey v vg with
+    | true  -> (G vg)
+    | false -> 
+        Map.add v (Set []) vg |> G
+
 let isIllegalGraph (G vg) =
     let vexs = getAllVex (G vg) |> Set
     let allE = allEdges (G vg)

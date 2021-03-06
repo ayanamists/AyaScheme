@@ -19,7 +19,7 @@ type PriorityEle<'T> =
             match another, x with
             | PE (_, a'), PE (_, x') -> x'.Equals a'
 
-let coloringGraph g =
+let coloringGraph' g m =
     let findMin l =
         let len = List.length l
         let rec makeArr arr l =
@@ -31,7 +31,7 @@ let coloringGraph g =
                               makeArr arr tl
         makeArr (Array.create len false) l |>
             fun arr -> List.find (fun x -> x = len || arr.[x] = false) [0 .. len + 1]
-    let rec loop pq res =
+    let rec loop pq res=
         if PriorityQueue.isEmpty pq
         then res
         else
@@ -55,4 +55,11 @@ let coloringGraph g =
         match (Map.tryFind vex m) with
         | Some t -> m
         | None -> loop (PriorityQueue.insert (PE (vex, 0)) (PriorityQueue.empty true)) m
-    List.fold foldF (Map []) vexs
+    List.fold foldF m vexs
+
+let coloringGraph g =  coloringGraph' g (Map [])
+
+let maxColor m = 
+    let c = Map.toList m |> List.map (fun (_, c) -> c)
+    if List.isEmpty c then 0 else 
+        List.sortDescending c |> List.head |> (+) 1

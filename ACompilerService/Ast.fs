@@ -134,7 +134,7 @@ type Pass5Label = Label
 type Pass5Atm =
 | P5Int of int64
 | P5Reg of Reg
-| P5Stack of MemOffset
+| P5Stack of MemOffset * Reg
 type Pass5Instr = 
 | P5CtrOp of InstrCtrOp * Label
 | P5UOp of InstrUOp * Pass5Atm
@@ -142,6 +142,16 @@ type Pass5Instr =
 type Pass5Block = Label * Info *  Pass5Instr list
 type Pass5Out = 
 | P5Program of Pass5Info * Pass5Block list
+
+let isEqualP5Atm atm1 atm2 = 
+    match atm1, atm2 with
+    | P5Reg r1, P5Reg r2 -> r1 = r2
+    | P5Stack (r1, s1), P5Stack (r2 ,s2) -> s1 = s2 && r1 = r2
+    | _ -> false
+let isUselessP5Instr instr = 
+    match instr with
+    | P5BOp (InstrBOp.Mov, atm1, atm2) -> isEqualP5Atm atm1 atm2
+    | _ -> false
 
 let p4InstrRW instr =
     let handleAtm atm =
