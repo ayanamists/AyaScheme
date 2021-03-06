@@ -6,24 +6,27 @@ open ACompilerService.Ast
 type SExpression = 
 | SId of string
 | SInt of int64
+| SBool of bool
 | SExp of SExpression list
 
 let pLPair = pchar '(' <|> pchar '[' <|> pchar '{'
 let pRPair = pchar ')' <|> pchar ']' <|> pchar '}'
 
 let notIdentifierChar = 
-    (List.append ['(' ; ')' ; ' '; '\n'; '['; ']'; '{' ; '}'] 
+    (List.append ['(' ; ')' ; ' '; '\n'; '['; ']'; '{' ; '}'; '\''] 
         (List.map (fun x -> (string x).[0]) [0 .. 9]))
 
 let idChar = noneOf notIdentifierChar
 let pId : Parser<SExpression, unit> = many1Chars idChar |>> SId
 let pNum : Parser<SExpression, unit> = pint64 |>> SInt
+let pBool : Parser<SExpression, unit> = pchar '\''  >>. pchar 't' |>> (fun x -> true |> SBool)
+                                        <|> (pchar 'f' |>> (fun x -> false |> SBool))
 
 let pIds, pIdsRef = 
      createParserForwardedToRef<SExpression list, unit>()
 
 let pSExp = pLPair >>. spaces >>. pIds |>> SExp
-let pAll = pNum <|> pId <|> pSExp
+let pAll = pNum <|> pId  <|> pBool <|> pSExp
 
 do pIdsRef := many1Till (pAll .>> spaces) pRPair
 
@@ -37,7 +40,8 @@ exception NotSExp of string
 
 let rec sExpToAst sexp = 
     match sexp with
-    | SId id -> Id id 
+    | SId id -> Id id
+    | SBool t -> Bool t
     | SInt inner -> Int inner
     | SExp sl -> 
         match sl with
@@ -51,6 +55,16 @@ let rec sExpToAst sexp =
                 | "-" -> handleBOp2 ExprOp.Sub tl
                 | "*" -> handleBOp1 ExprOp.Mult tl
                 | "/" -> handleBOp2 ExprOp.Div tl
+                | "eq" -> handleBOp2 ExprOp.Eq tl
+                | "=" -> handleBOp2 ExprOp.IEq tl
+                | ">=" -> handleBOp1 ExprOp.IEqB tl
+                | "<=" -> handleBOp1 ExprOp.IEqL tl
+                | ">"  -> handleBOp1 ExprOp.IB tl
+                | "<"  -> handleBOp1 ExprOp.IL tl
+                | "and" -> handleBOp1 ExprOp.And tl
+                | "or" -> handleBOp1 ExprOp.Or tl
+                | "if" -> ifToAst tl
+                | "not" -> handleUOp ExprUOp.Not tl
                 | _ -> ExcepOfExpToAst ("Not Implement") |> raise
             | SInt _ -> (ExcepOfExpToAst "Int should not be called") |> raise
             | SExp _ -> ExcepOfExpToAst ("Not Implement") |> raise 
@@ -62,6 +76,14 @@ and letToAst lsexp =
             | SExp (SId x :: [ y ]) -> (x, sExpToAst y) 
             | _ -> ExcepOfExpToAst ("Syntax error") |> raise) sl ), 
           sExpToAst expr ) |> LetExp
+    | _ -> ExcepOfExpToAst ("Syntax error") |> raise
+and ifToAst lsexp =
+    match lsexp with
+    | expr1 :: expr2 :: [ expr3 ] -> IfExp (sExpToAst expr1, sExpToAst expr2, sExpToAst expr3)
+    | _ -> ExcepOfExpToAst ("Syntax error") |> raise
+and handleUOp op lsexp =
+    match lsexp with
+    | [expr1] -> UOpExp (op, sExpToAst expr1)
     | _ -> ExcepOfExpToAst ("Syntax error") |> raise
 and handleBOp1 op lsexp = 
     match lsexp with

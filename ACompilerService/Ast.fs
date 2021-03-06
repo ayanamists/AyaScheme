@@ -4,28 +4,42 @@ open ACompilerService.Utils
 
 type Value = 
 | IntValue of int64
+| BoolValue of bool
 
 type Identifier = string
 
 type ExprOp =
-| Add = 0
-| Sub = 1
-| Mult = 2
-| Div = 3
+| Add = 0 | Sub = 1 | Mult = 2 | Div = 3
+| Eq = 4
+| IEq = 5 | IEqB = 6 | IEqL = 7 | IB = 8 | IL = 9
+| And = 10 | Or = 11 
 
+type ExprUOp =
+| Not = 0
 let printOp (op:ExprOp) = 
     match op with
     | ExprOp.Add -> "+"
     | ExprOp.Sub -> "-"
     | ExprOp.Mult -> "*"
     | ExprOp.Div -> "/"
+    | ExprOp.Eq -> "eq"
+    | ExprOp.IEq -> "="
+    | ExprOp.IEqB -> ">="
+    | ExprOp.IEqL -> "<="
+    | ExprOp.IB -> ">"
+    | ExprOp.IL -> "<"
+    | ExprOp.And -> "and"
+    | ExprOp.Or -> "or"
     | _ -> Failure ("Impossible") |> raise
 
 type Expr = 
 | Int of int64
+| Bool of bool
 | Id of Identifier
 | LetExp of ((Identifier * Expr) list) * Expr
+| IfExp of Expr * Expr * Expr
 | OpExp of ExprOp * Expr * Expr
+| UOpExp of ExprUOp * Expr
 
 type Index = int
 type CompileState =  { mutable newVarIdx: Index; }

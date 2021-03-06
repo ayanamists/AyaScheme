@@ -33,6 +33,32 @@ let ``test 5`` () =
 
 
 [<Fact>]
+let ``test 6`` () =
+    testFunc
+        "(if 't 1 2)"
+        (Ok (SExp [(SId "if"); (SBool true); (SInt 1L); (SInt 2L)]))
+
+[<Fact>]
+let ``test 7`` () =
+    testFunc
+        "(if (not (and (>= 1 2) (or (< 1 2) (= 1 2)))) 1 2)"
+        (Ok (SExp [(SId "if")
+                   SExp [(SId "not")
+                         SExp [
+                             SId "and"
+                             SExp [SId ">="; SInt 1L; SInt 2L]
+                             SExp [
+                                 SId "or"
+                                 SExp [SId "<"; SInt 1L; SInt 2L]
+                                 SExp [SId "="; SInt 1L; SInt 2L]
+                             ]
+                         ]
+                   ]
+                   SInt 1L
+                   SInt 2L
+             ]))
+
+[<Fact>]
 let ``post parser test 1`` () = 
    try
        let res = parseToAst "(let \n ((x 10) (y 20)) (+ x y))"
@@ -76,3 +102,37 @@ let ``post parser test 4`` () =
         )
     with 
     | _ -> Assert.True(false)
+    
+[<Fact>]
+let ``post parser test 5`` () =
+    try
+            let res = parseToAst "(if (>= 1 2) 1 2)"
+            Assert.Equal(
+                IfExp (OpExp (ExprOp.IEqB, Int 1L, Int 2L), Int 1L, Int 2L), 
+                res
+            )
+    with 
+    | _ -> Assert.True(false)
+
+[<Fact>]
+let ``post parser test 6`` () =
+   try
+       let res = parseToAst "(if (not (and (>= 1 2) (or (< 1 2) (= 1 2)))) 1 2)"
+       Assert.Equal(
+           IfExp (
+               UOpExp (ExprUOp.Not,
+                       OpExp (ExprOp.And,
+                             OpExp (ExprOp.IEqB, Int 1L, Int 2L),
+                             OpExp (ExprOp.Or,
+                                    OpExp (ExprOp.IL, Int 1L, Int 2L ),
+                                    OpExp (ExprOp.IEq, Int 1L, Int 2L)))),
+               Int 1L,
+               Int 2L),
+           res
+       )
+   with
+   | ExcepOfExpToAst t ->
+       printfn "%A" t
+       Assert.True(false)
+   | t -> printfn "%A" t
+          Assert.True(false)
