@@ -37,3 +37,51 @@ let ``Interpreter test 5`` () =
     let prg = "(- 10000000 30)"
     let wanted = IntValue 9999970L
     Assert.Equal(wanted, parseAndEval prg)
+
+[<Fact>]
+let ``Interpreter test 6`` () =
+    let prg = "(let ([a 1])
+                 (if (= a 1)
+                      1
+                      2))"
+    let wanted = IntValue 1L
+    Assert.Equal(wanted, parseAndEval prg)
+    
+[<Fact>]
+let ``Interpreter test 7`` () =
+    let prg = "(let ([a 10])
+                 (>= a 11))"
+    let wanted = BoolValue false
+    Assert.Equal(wanted, parseAndEval prg)
+    
+[<Fact>]
+let ``Interpreter test 8`` () =
+    let prg = "(if (not (and (>= 1 2) (or (< 1 2) (= 1 2)))) 1 2)"
+    let wanted = IntValue 1L
+    Assert.Equal(wanted, parseAndEval prg)
+    
+[<Fact>]
+let ``Interpreter test 9`` () =
+    let prg = "(< 10 11)"
+    let wanted = BoolValue true
+    Assert.Equal(wanted, parseAndEval prg)
+    
+[<Fact>]
+let ``Interpreter test 10`` () =
+    let prg = "(eq? 10 't)"
+    let wanted = BoolValue false
+    Assert.Equal(wanted, parseAndEval prg)
+    
+[<Fact>]
+let ``Interpreter test 11`` () =
+    let prg = "(eq? 10 10)"
+    let wanted = BoolValue true
+    Assert.Equal(wanted, parseAndEval prg)
+    
+[<Fact>]
+let ``Interpreter test 12`` () =
+    let prg = "(eq? 't 't)"
+    let wanted = BoolValue true
+    Assert.Equal(wanted, parseAndEval prg)
+ 
+ 

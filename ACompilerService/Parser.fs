@@ -55,7 +55,7 @@ let rec sExpToAst sexp =
                 | "-" -> handleBOp2 ExprOp.Sub tl
                 | "*" -> handleBOp1 ExprOp.Mult tl
                 | "/" -> handleBOp2 ExprOp.Div tl
-                | "eq" -> handleBOp2 ExprOp.Eq tl
+                | "eq?" -> handleBOp2 ExprOp.Eq tl
                 | "=" -> handleBOp2 ExprOp.IEq tl
                 | ">=" -> handleBOp1 ExprOp.IEqB tl
                 | "<=" -> handleBOp1 ExprOp.IEqL tl

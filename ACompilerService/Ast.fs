@@ -22,7 +22,7 @@ let printOp (op:ExprOp) =
     | ExprOp.Sub -> "-"
     | ExprOp.Mult -> "*"
     | ExprOp.Div -> "/"
-    | ExprOp.Eq -> "eq"
+    | ExprOp.Eq -> "eq?"
     | ExprOp.IEq -> "="
     | ExprOp.IEqB -> ">="
     | ExprOp.IEqL -> "<="
