@@ -41,21 +41,14 @@ type Expr =
 | OpExp of ExprOp * Expr * Expr
 | UOpExp of ExprUOp * Expr
 
-type Index = int
-type CompileState =  { mutable newVarIdx: Index; }
-let emptyCompileState () = { newVarIdx = 0; }
-let genSym state = 
-    let idx = state.newVarIdx
-    state.newVarIdx <- idx + 1
-    idx
-let getMaxIdxOfSym state =
-     state.newVarIdx 
-
 type Pass1Out = 
 | P1Int of int64
+| P1Bool of bool
 | P1Id of Index
 | P1LetExp of ((Index * Pass1Out) list) * Pass1Out
 | P1OpExp of ExprOp * Pass1Out * Pass1Out
+| P1IfExp of Pass1Out * Pass1Out * Pass1Out
+| P1UOpExp of ExprUOp * Pass1Out
 
 type Pass2Atm = 
 | P2Int of int64

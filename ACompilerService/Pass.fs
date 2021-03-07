@@ -17,7 +17,6 @@ type CompileError =
     | VarNotBoundError of string
 
 let makeVarNotBoundError i = (VarNotBoundError (sprintf "%A is Not bound" i))
-type TypeEnv = Env<Identifier, ExprValueType>
 let typeCheck exp =
     let rec typeCheckWithEnv exp env =
         let typeEqual exp1 exp2 t1 t2 =
@@ -34,69 +33,64 @@ let typeCheck exp =
                 target3 |> Result.Ok
             ) (typeEqualTo exp2 t2 target2)
             ) (typeEqualTo exp1 t1 target1)
-        let typeOr t1 t2 =
-            match t1 with
-            | Result.Ok _ -> t1
-            | Result.Error error1 ->
-                match t2 with
-                | Result.Ok _ -> t2
-                | Result.Error error2 ->
-                    TypeError (sprintf "Type Error: %A or %A" error1 error2) |> Result.Error
         match exp with
-        | Expr.Int _ -> ExprValueType.IntType |> Result.Ok
-        | Expr.Bool _ -> ExprValueType.BoolType |> Result.Ok
-        | Expr.Id i ->
+        | P1Int _ -> (exp, ExprValueType.IntType) |> Result.Ok
+        | P1Bool _ -> (exp, ExprValueType.BoolType) |> Result.Ok
+        | P1Id i ->
             match searchEnv env i with
-            | Some t -> t |> Result.Ok
-            | None -> makeVarNotBoundError i |> Result.Error
-        | Expr.LetExp (l, expr) ->
+            | Some t -> (exp, t) |> Result.Ok
+            | None -> Impossible () |> raise 
+        | P1LetExp (l, expr) ->
             let rec handleL l =
                 match l with
-                | [] -> env |> Result.Ok
+                | [] -> ([], env) |> Result.Ok
                 | (id, exp) :: tl ->
-                    Result.bind (fun hdType ->
-                        Result.bind (fun env ->
-                            Result.Ok (addEnv env id hdType)
-                        ) (handleL tl)
-                    ) (typeCheckWithEnv exp env)
-            Result.bind (fun newEnv ->
-                typeCheckWithEnv expr newEnv
-                ) (handleL l)
-        | Expr.IfExp (cond, ifTrue, ifFalse) ->
-            Result.bind (fun condType ->
-            Result.bind (fun _ ->
-            Result.bind (fun t1 ->
-            Result.bind (fun t2 ->
-                typeEqual ifTrue ifFalse t1 t2
-            ) (typeCheckWithEnv ifFalse env)
-            ) (typeCheckWithEnv ifTrue env)
-            ) (typeEqualTo cond condType ExprValueType.BoolType)
-            ) (typeCheckWithEnv cond env)
-        | Expr.OpExp (op, exp1, exp2) ->
-            Result.bind (fun expT1 ->
-            Result.bind (fun expT2 ->
+                    result {
+                        let! (exp', t) = typeCheckWithEnv exp env
+                        let! (l', env') = handleL tl
+                        return ((id, exp') :: l', addEnv env' id t)
+                    }
+            result {
+                let! (l', env') = handleL l
+                let! (exp', t) = typeCheckWithEnv expr env'
+                return (P1LetExp (l', exp'), t)
+            }
+        | P1IfExp (cond, ifTrue, ifFalse) ->
+            result {
+                let! (cond', tCond) = (typeCheckWithEnv cond env)
+                let! (ifTrue', tIfTrue) = (typeCheckWithEnv ifTrue env)
+                let! (ifFalse', tIfFalse) = (typeCheckWithEnv ifFalse env)
+                let! _ = (typeEqualTo cond tCond ExprValueType.BoolType)
+                let! _ = (typeEqual ifTrue' ifFalse' tIfFalse tIfTrue)
+                return (P1IfExp (cond', ifTrue', ifFalse'), tIfTrue)
+            }
+        | P1OpExp (op, exp1, exp2) ->
+            Result.bind (fun (exp1', expT1) ->
+            Result.bind (fun (exp2', expT2) ->
+                let makeBOp t1 t2 t3 =
+                     result {
+                       let! t = opType exp1' exp2' expT1 expT2 t1 t2 t3
+                       return (P1OpExp (op, exp1', exp2'), t)
+                     } 
                 match op with
                 | ExprOp.Add | ExprOp.Sub | ExprOp.Div | ExprOp.Mult ->
-                    opType exp1 exp2 expT1 expT2
-                           ExprValueType.IntType ExprValueType.IntType ExprValueType.IntType
+                    makeBOp ExprValueType.IntType ExprValueType.IntType ExprValueType.IntType
                 | ExprOp.And | ExprOp.Or ->
-                    opType exp1 exp2 expT1 expT2
-                           ExprValueType.BoolType ExprValueType.BoolType ExprValueType.BoolType
+                    makeBOp ExprValueType.BoolType ExprValueType.BoolType ExprValueType.BoolType
                 | ExprOp.IEqB | ExprOp.IEq | ExprOp.IEqL | ExprOp.IB | ExprOp.IL ->
-                    opType exp1 exp2 expT1 expT2
-                           ExprValueType.IntType ExprValueType.IntType ExprValueType.BoolType
-                | ExprOp.Eq ->
-                    typeOr (opType exp1 exp2 expT1 expT2
-                                ExprValueType.IntType ExprValueType.IntType ExprValueType.BoolType)
-                           (opType exp1 exp2 expT1 expT2
-                                ExprValueType.BoolType ExprValueType.BoolType ExprValueType.BoolType)
+                    makeBOp ExprValueType.IntType ExprValueType.IntType ExprValueType.BoolType
+                 | ExprOp.Eq ->
+                     if not (expT1 = expT2) then (P1Bool false, ExprValueType.BoolType) |> Result.Ok
+                     else (P1OpExp (op, exp1', exp2'), ExprValueType.BoolType) |> Result.Ok
                 | _ -> Impossible () |> raise
             ) (typeCheckWithEnv exp2 env)
             ) (typeCheckWithEnv exp1 env)
-        | Expr.UOpExp (op, exp1) ->
-            Result.bind (fun t1 ->
-                typeEqualTo exp1 t1 ExprValueType.BoolType
-            ) (typeCheckWithEnv exp1 env)
+        | P1UOpExp (op, exp1) ->
+            result {
+                let! (exp1', t) = (typeCheckWithEnv exp1 env)
+                let _ = typeEqualTo exp1' t ExprValueType.BoolType
+                return (P1UOpExp (op, exp1'), t)
+            }
     typeCheckWithEnv exp emptyEnv
 
 (*
@@ -115,36 +109,52 @@ let typeCheck exp =
 let lexicalAddress exp =
     let rec loop exp (env:Env<Identifier, Index>) = 
         match exp with
-        | Expr.Int i -> P1Int i |> stateRet 
+        | Expr.Int i -> P1Int i |> Result.Ok
+        | Expr.Bool b -> P1Bool b |> Result.Ok
         | Expr.Id i -> 
             match (searchEnv env i) with
-            | Some res -> res |> Pass1Out.P1Id |> stateRet
-            | None -> VarNotBound (sprintf "Var %A not bound" i) |> raise
+            | Some res -> res |> Pass1Out.P1Id |> Result.Ok
+            | None -> makeVarNotBoundError i |> Result.Error
         | Expr.LetExp (l, expr) ->
             let rec handleList l nowL (nowEnv:Env<Identifier, Index>) =
                 match l with
-                | [] -> stateRet (nowL, nowEnv)
+                | [] -> (nowL, nowEnv) |> Result.Ok
                 | (id , exp) :: tl ->
-                    state {
-                        let! cs = stateGet
-                        let idx = genSym cs
+                    result {
+                        let idx = genSym ()
                         let! x = loop exp env
                         return! handleList tl ((idx, x) :: nowL) (addEnv nowEnv id idx)
                     }
-            state {
-               let! (nowL, nowEnv) = (handleList l [] env)
-               let! nowExpr = loop expr nowEnv
-               return Pass1Out.P1LetExp ((List.rev nowL), nowExpr)
+            result {
+                let! (nowL, nowEnv) = (handleList l [] env)
+                let! nowExpr = loop expr nowEnv
+                return Pass1Out.P1LetExp ((List.rev nowL), nowExpr)
             }
         | Expr.OpExp (op, expr1, expr2) ->
-            state {
+            result {
                 let! e1 = loop expr1 env
                 let! e2 = loop expr2 env
-                return Pass1Out.P1OpExp (op, e1, e2 ) 
+                return Pass1Out.P1OpExp (op, e1, e2 )
+            }
+        | Expr.IfExp (cond, ifTrue, ifFalse) ->
+            result {
+                let! e1 = loop cond env
+                let! e2 = loop ifTrue env
+                let! e3 = loop ifFalse env
+                return P1IfExp (e1, e2, e3)
+            }
+        | Expr.UOpExp (op, exp) ->
+            result {
+                let! exp' = loop exp env
+                return P1UOpExp (op, exp')
             }
     loop exp emptyEnv<Identifier, Index>
 
-let pass1 = lexicalAddress
+let pass1 x = result {
+    let! x' = lexicalAddress x
+    let! (x'', _) = typeCheck x'
+    return x''
+} 
 
 (*
     Approach 1 : Pass 2 Administrative Normal Form
@@ -159,36 +169,32 @@ let isAtomPass1Out p1o =
 let anf exp = 
     let rec loop exp = 
         match exp with 
-        | P1Int i -> P2Int i |> P2Atm |> stateRet
-        | P1Id i -> P2Var i |> P2Atm |> stateRet
+        | P1Int i -> P2Int i |> P2Atm 
+        | P1Id i -> P2Var i |> P2Atm 
         | P1LetExp (l, exp) -> 
             match l with
             | [] -> loop exp
             | (var, vexp) :: tl ->
-                state {
-                    let! v = loop vexp
-                    let! t = (P1LetExp (tl, exp)) |> loop
-                    return P2LetExp (var, v, t)
-                }
+                    let v = loop vexp
+                    let t = (P1LetExp (tl, exp)) |> loop
+                    P2LetExp (var, v, t)
         | P1OpExp (op, expr1, expr2) -> 
             anfList (fun [e1; e2] -> P2OpExp (op, e1, e2)) [expr1; expr2]
     and anfList func expl =
         let rec handleExpl expl ids = 
             match expl with
-            | [] -> List.rev ids |> func |> stateRet
+            | [] -> List.rev ids |> func 
             | hd :: tl -> 
                 match hd with
                 | P1Id i -> handleExpl tl ((P2Var i) :: ids)
                 | P1Int i -> handleExpl tl ((P2Int i) :: ids)
-                | _ -> state {
-                    let! cs = stateGet
-                    let sym = genSym cs
-                    let! hdR = loop hd
-                    let! tlR = handleExpl tl ((sym |> P2Var) :: ids)
-                    return P2LetExp (sym, hdR, tlR)
-                }
+                | _ -> 
+                    let sym = genSym ()
+                    let hdR = loop hd
+                    let tlR = handleExpl tl ((sym |> P2Var) :: ids)
+                    P2LetExp (sym, hdR, tlR)
         handleExpl expl [] 
-    loop exp
+    loop exp |> Result.Ok
 
 let pass2 = anf
 
@@ -218,7 +224,7 @@ let explicitControl exp =
             let p3Opbp = p2OpExpToP3OpExp op atm1 atm2
             P3Seq (P3Assign (idx, p3Opbp), cont)
     let tail = explicitTail exp
-    P3Program (emptyInfo, [ (startLabel, tail) ]) |> stateRet
+    P3Program (emptyInfo, [ (startLabel, tail) ]) |> Result.Ok
 
 let pass3 = explicitControl
 
@@ -237,25 +243,22 @@ let isReg atm reg =
 
 let genFromBPrim op atm1 atm2 leftAtm = 
     let case1 op a1 a2 = [ P4BOp (InstrBOp.Mov, a2, leftAtm)
-                           P4BOp (op, a1, leftAtm) ] |> stateRet
+                           P4BOp (op, a1, leftAtm) ] 
     let case2 op a1 a2 = [ P4BOp (InstrBOp.Mov, a1, leftAtm)
-                           P4BOp (op, a2, leftAtm)] |> stateRet
+                           P4BOp (op, a2, leftAtm)] 
     let case3 op a1 a2 = 
         if isReg leftAtm Reg.Rax
         then 
             [P4BOp (InstrBOp.Mov, a1, leftAtm)
-             P4UOp (op, a2)] |> stateRet
+             P4UOp (op, a2)] 
         else
-            state {
-                let! cs = stateGet                
-                let tempVar = genSym cs |> P4Var
-                return  [ 
+                let tempVar = genSym () |> P4Var
+                [ 
                    P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, tempVar )
                    P4BOp (InstrBOp.Mov, a1, P4Reg (Reg.Rax))
                    P4UOp (op, a2)
                    P4BOp (InstrBOp.Mov, P4Reg (Reg.Rax), leftAtm)
                    P4BOp (InstrBOp.Mov, tempVar, P4Reg Reg.Rax) ]
-            }
     let newAtm1 = p3AtmToP4Atm atm1
     let newAtm2 = p3AtmToP4Atm atm2
     let target = 
@@ -275,10 +278,8 @@ let genFromBPrim op atm1 atm2 leftAtm =
         | ExprOp.Mult -> case3 InstrUOp.IMul newAtm1 newAtm2
         | ExprOp.Div -> case3 InstrUOp.IDiv newAtm1 newAtm2
         | _ -> Impossible () |> raise
-    state {
-        let! target = target
-        return (List.filter (fun x -> isUselessP4Instr x |> not) target)
-    }
+    let target = target
+    (List.filter (fun x -> isUselessP4Instr x |> not) target)
 
 let selectInstructions p3Prg = 
     let rec handleTail (t:Pass3Tail) acc =
@@ -289,30 +290,24 @@ let selectInstructions p3Prg =
                 let thisCode = P4BOp (InstrBOp.Mov, p3AtmToP4Atm atm, idx |> P4Var)
                 handleTail tail (thisCode :: acc)
             | P3BPrim (op, atm1, atm2) ->
-                state {
-                    let! thisCode1 = genFromBPrim op atm1 atm2 (P4Var idx)
-                    return! handleTail tail ( (List.rev thisCode1) @ acc ) }
+                let thisCode1 = genFromBPrim op atm1 atm2 (P4Var idx)
+                handleTail tail ( (List.rev thisCode1) @ acc )
         | P3Return (p3Exp) -> 
             let retCode = P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
             match p3Exp with
             | P3Atm atm ->
                 let thisCode = P4BOp (InstrBOp.Mov, p3AtmToP4Atm atm, P4Reg Reg.Rax)
-                retCode :: thisCode :: acc |> List.rev |> stateRet
+                retCode :: thisCode :: acc |> List.rev 
             | P3BPrim (op, atm1, atm2) ->
-                state {
-                    let! thisCode = genFromBPrim op atm1 atm2 (P4Reg Reg.Rax)
-                    return retCode :: (List.rev thisCode) @ acc |> List.rev
-                }
+                let thisCode = genFromBPrim op atm1 atm2 (P4Reg Reg.Rax)
+                retCode :: (List.rev thisCode) @ acc |> List.rev
     match p3Prg with
     | P3Program (info, blocks) ->
-        let newBlocks = stateMap (fun (l, t) ->
-                    state {
-                        let! newTail = (handleTail t []) 
-                        return (l, emptyP4BlockInfo, newTail) } ) blocks
-        state {
-            let! newBlocks = newBlocks
-            return P4Program (info, newBlocks)
-        }
+        let newBlocks = List.map (fun (l, t) ->
+                        let newTail = (handleTail t []) 
+                        (l, emptyP4BlockInfo, newTail) ) blocks
+        let newBlocks = newBlocks
+        P4Program (info, newBlocks) |> Result.Ok
 
 let pass4 = selectInstructions
 
@@ -451,5 +446,5 @@ let regAlloc p4Prg =
                     P5UOp (op, a1) :: l )
                 | P4CtrOp (op, t) -> P5CtrOp (op, t) :: l
         let instrs' = List.fold foldF [] instrs |> List.rev
-        P5Program(info, [ (label, info', instrs')  ]) |> stateRet
+        P5Program(info, [ (label, info', instrs')  ]) |> Result.Ok
         

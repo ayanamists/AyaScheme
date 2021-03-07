@@ -7,7 +7,25 @@ open ACompilerService.Ast
 open ACompilerService.Parser
 open ACompilerService.Utils
 
-let toChecked x = parseToAst x |> typeCheck
+let prgList = 
+    [|
+        "(let ([a 1] [b 2]) (+ a b))"
+        "(let ([a 1]) (/ (+ a 3) 4))" 
+        "(let ([a 1]) (let ([b 2]) b))"
+        "(let ([a 1]) (/ (+ (- a 10) 3) 4))"
+        "(+ (* 10 1) 1)"
+        "(if (let [(a #t)] a) 1 2)"
+        "(eq? 1 #t)"
+    |]
+
+let toChecked x =
+    let x' = parseToAst x
+    renewCompileState ()
+    result {
+        let! x'' = lexicalAddress x'
+        let! x''' = typeCheck x''
+        return x''' |> snd
+    }
 
 [<Fact>]
 let ``typeCheck Test 1`` () =
@@ -17,33 +35,49 @@ let ``typeCheck Test 1`` () =
     
 [<Fact>]
 let ``typeCheck Test 2`` () =
-    let prg = "(let ([t 't]) t)"
+    let prg = "(let ([t #t]) t)"
     let wanted = Result.Ok ExprValueType.BoolType
     Assert.Equal(wanted, toChecked prg)
     
 [<Fact>]
 let ``typeCheck Test 3`` () =
-    let prg = "(if 1 't 't)"
+    let prg = "(if 1 #t #t)"
     match (toChecked prg) with
     | Result.Error (TypeError _) -> Assert.True
     | _ -> Assert.False
     
 [<Fact>]
 let ``typeCheck Test 4`` () =
-    let prg = "(if 't 1 'f)"
+    let prg = "(if #t 1 #f)"
     match (toChecked prg) with
     | Result.Error (TypeError _) -> Assert.True
     | _ -> Assert.False
-
-let toPass1 x = parseToAst x |> pass1
-let testPass1 x = stateRun (toPass1 x) (emptyCompileState ()) 
+    
+[<Fact>]
+let ``typeCheck Test 5`` () =
+    let prg = "(+ 1 #t)"
+    match (toChecked prg) with
+    | Result.Error (TypeError _) -> Assert.True
+    | _ -> Assert.False
+    
+[<Fact>]
+let ``typeCheck Test 6`` () =
+    let prg = "(eq? 1 #t)"
+    let res = ExprValueType.BoolType |> Result.Ok
+    Assert.Equal(res, toChecked prg)
+ 
+let toPass1 x =
+    renewCompileState ()
+    parseToAst x |> pass1
+let testPass1 x = toPass1 x
+let makeRes x = Result.Ok x
 [<Fact>]
 let ``Pass 1 test 1`` () = 
     let prg = "(let ([a 1] [b 2]) (+ a b))"
     let wanted = 
         Pass1Out.P1LetExp ([(0, Pass1Out.P1Int 1L); (1, Pass1Out.P1Int 2L)],
-            Pass1Out.P1OpExp (ExprOp.Add, Pass1Out.P1Id 0, Pass1Out.P1Id 1 ))
-    let (res, _) = testPass1 prg
+            Pass1Out.P1OpExp (ExprOp.Add, Pass1Out.P1Id 0, Pass1Out.P1Id 1 )) |> makeRes
+    let res = testPass1 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -54,27 +88,40 @@ let ``Pass 1 test 2`` () =
                              (Pass1Out.P1LetExp 
                                 ([(1, Pass1Out.P1Int 1L)], 
                                  (Pass1Out.P1OpExp (ExprOp.Add, Pass1Out.P1Id 1, Pass1Out.P1Int 1L)))));
-                            (2, Pass1Out.P1Int 1L)], (Pass1Out.P1OpExp (ExprOp.Add, Pass1Out.P1Id 0, Pass1Out.P1Id 2)))
-    let (res, _) = testPass1 prg
+                            (2, Pass1Out.P1Int 1L)], 
+                           (Pass1Out.P1OpExp (ExprOp.Add, Pass1Out.P1Id 0, Pass1Out.P1Id 2)))
+        |> makeRes
+    let res = testPass1 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
 let ``Pass 1 test 3`` () =
-   let prg = "(+ a b)" 
-   Assert.Throws(typeof<VarNotBound>, 
-       Action(fun () -> toPass1 prg |> ignore))
+   let prg = "(+ a b)"
+   match (testPass1 prg) with
+   | Result.Error (VarNotBoundError _) -> Assert.True
+   | _ -> Assert.False
+   
+[<Fact>]
+let ``Pass 1 test 4`` () =
+    let prg = prgList.[5]
+    let wanted =
+        P1IfExp (P1LetExp([(0, P1Bool true)], P1Id 0)
+                ,P1Int 1L
+                ,P1Int 2L
+                ) |> makeRes
+    let res = testPass1 prg
+    Assert.Equal(wanted, res)
 
-let toPass2 x = stateComb (toPass1 x) (fun x -> x |> pass2)
-let testPass2 x = stateRun (toPass2 x) (emptyCompileState ())
+[<Fact>]
+let ``Pass 1 test 5`` () =
+    let prg = prgList.[6]
+    let wanted = P1Bool false |> makeRes
+    let res = testPass1 prg
+    Assert.Equal(wanted, res)
 
-let prgList = 
-    [|
-        "(let ([a 1] [b 2]) (+ a b))"
-        "(let ([a 1]) (/ (+ a 3) 4))" 
-        "(let ([a 1]) (let ([b 2]) b))"
-        "(let ([a 1]) (/ (+ (- a 10) 3) 4))" 
-        "(+ (* 10 1) 1)"
-    |]
+let toPass2 x = Result.bind pass2 (toPass1 x) 
+let testPass2 x = toPass2 x
+
 
 [<Fact>]
 let ``Pass 2 test 1`` () =
@@ -82,7 +129,8 @@ let ``Pass 2 test 1`` () =
     let wanted = 
         P2LetExp (0, P2Int 1L |> P2Atm
                    , P2LetExp (1, P2Int 2L |> P2Atm, P2OpExp (ExprOp.Add ,(P2Var 0), (P2Var 1))))
-    let (res, _) = testPass2 prg
+        |> makeRes
+    let res = testPass2 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -94,7 +142,8 @@ let ``Pass 2 test 2`` () =
                  ,P2LetExp (1
                            ,P2OpExp (ExprOp.Add, P2Var 0, P2Int 3L)
                            ,P2OpExp (ExprOp.Div, P2Var 1, P2Int 4L)))
-    let (res, _) = testPass2 prg
+        |> makeRes
+    let res = testPass2 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -104,7 +153,8 @@ let ``Pass 2 test 3`` () =
         P2LetExp (0
                  ,P2IntAtm 1L
                  ,P2LetExp (1, P2IntAtm 2L, P2VarAtm 1))
-    let (res, _) = testPass2 prg
+        |> makeRes 
+    let res = testPass2 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -118,19 +168,28 @@ let ``Pass 2 test 4`` () =
                                     ,P2OpExp (ExprOp.Sub, P2Var 0, P2Int 10L)
                                     ,P2OpExp (ExprOp.Add, P2Var 2, P2Int 3L))
                            ,P2OpExp (ExprOp.Div, P2Var 1, P2Int 4L)))
-    let (res, _) = testPass2 prg
+       |> makeRes
+    let res = testPass2 prg
+    (*
+    match res with
+    | Result.Ok t -> printfn "%A" t
+    | _ -> Impossible () |> raise
+    *)
     Assert.Equal(wanted, res)
     
-let toPass3 x = stateComb (toPass2 x) (fun x -> x |> pass3)
-let testPass3 x = stateRun (toPass3 x) (emptyCompileState ())
+let toPass3 x = result {
+    let! x' = toPass2 x 
+    return! (pass3 x')
+}
+let testPass3 x = toPass3 x
 [<Fact>]
 let ``Pass 3 test 1`` () =
     let prg = prgList.[0]
     let p3 = P3Seq (P3Assign (0, p3IntAtm 1L)
                    ,P3Seq(P3Assign (1, p3IntAtm 2L)
                          ,P3Return (P3BPrim (ExprOp.Add, P3Var 0, P3Var 1))))
-    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ])
-    let (res, _) = testPass3 prg
+    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ]) |> makeRes
+    let res = testPass3 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -139,8 +198,8 @@ let ``Pass 3 test 2`` () =
     let p3 = P3Seq (P3Assign (0, p3IntAtm 1L)
                    ,P3Seq (P3Assign (1, P3BPrim (ExprOp.Add, P3Var 0, P3Int 3L))
                           ,P3Return (P3BPrim (ExprOp.Div, P3Var 1, P3Int 4L))))
-    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ])
-    let (res, _) = testPass3 prg
+    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ]) |> makeRes
+    let res = testPass3 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -149,8 +208,8 @@ let ``Pass 3 test 3`` () =
     let p3 = P3Seq (P3Assign (0, p3IntAtm 1L)
                    ,P3Seq (P3Assign (1, p3IntAtm 2L)
                           ,P3Return (p3VarAtm 1)))
-    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ])
-    let (res, _) = testPass3 prg
+    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ]) |> makeRes
+    let res = testPass3 prg
     Assert.Equal(wanted, res)
 [<Fact>]
 let ``Pass 3 test 4 `` () =
@@ -159,15 +218,12 @@ let ``Pass 3 test 4 `` () =
                    ,P3Seq (P3Assign (2, P3BPrim (ExprOp.Sub, P3Var 0, P3Int 10L))
                           ,P3Seq (P3Assign (1, P3BPrim (ExprOp.Add, P3Var 2, P3Int 3L))
                                  ,P3Return (P3BPrim (ExprOp.Div, P3Var 1, P3Int 4L)))))
-    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ])
-    let (res, _) =testPass3 prg 
+    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ]) |> makeRes
+    let res =testPass3 prg 
     Assert.Equal(wanted, res)
 
-let toPass4 x = state {
-    let! a = toPass3 x
-    return! (pass4 a)
-}
-let testPass4 x = stateRun (toPass4 x) (emptyCompileState ())
+let toPass4 x = Result.bind pass4 (toPass3 x)
+let testPass4 x = (toPass4 x)
 [<Fact>]
 let ``Pass 4 test 1 `` () =
     let prg = prgList.[0]
@@ -179,8 +235,8 @@ let ``Pass 4 test 1 `` () =
             P4BOp (InstrBOp.Add, P4Var 0, P4Reg Reg.Rax)
             P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
-    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = testPass4 prg 
+    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ]) |> makeRes
+    let res = testPass4 prg 
     Assert.Equal(wanted, res)
 [<Fact>]
 let ``Pass 4 test 2 `` () =
@@ -194,8 +250,8 @@ let ``Pass 4 test 2 `` () =
             P4UOp (InstrUOp.IDiv, P4Int 4L )
             P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
-    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = testPass4 prg 
+    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ]) |> makeRes
+    let res = testPass4 prg 
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -208,8 +264,8 @@ let ``Pass 4 test 3 `` () =
             P4BOp (InstrBOp.Mov, P4Var 1, P4Reg Reg.Rax)
             P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
-    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = testPass4 prg 
+    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ]) |> makeRes
+    let res = testPass4 prg 
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -226,8 +282,8 @@ let ``Pass 4 test 4 `` () =
             P4UOp (InstrUOp.IDiv, P4Int 4L)
             P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
-    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = testPass4 prg 
+    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ]) |> makeRes
+    let res = testPass4 prg 
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -244,8 +300,8 @@ let ``Pass 4 test 5`` () =
             P4BOp (InstrBOp.Add, P4Int 1L, P4Reg Reg.Rax)
             P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
-    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ])
-    let (res, _) = testPass4 prg 
+    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ]) |> makeRes
+    let res = testPass4 prg 
     Assert.Equal(wanted, res)
     
 let regAllocSTestCase = [
@@ -351,10 +407,8 @@ let ``remove Temp test 3`` () =
     Assert.Equal<Pass4Instr list>(wanted, res)
         
 let pass5 = regAlloc
-let toPass5 x = state {
-    let! t = toPass4 x
-    return! pass5 t}
-let testPass5 x = stateRun (toPass5 x) (emptyCompileState ()) |> fst
+let toPass5 x = Result.bind pass5 (toPass4 x)
+let testPass5 x = toPass5 x
 
 [<Fact>]
 let ``reg Alloc Test 1`` () =
@@ -364,7 +418,7 @@ let ``reg Alloc Test 1`` () =
         P5BOp (InstrBOp.Add, P5Int 1L, P5Reg Reg.Rax)
         P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
     ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
     let res = testPass5 prg
     Assert.Equal(wanted, res)
     
@@ -378,7 +432,7 @@ let ``reg Alloc Test 2`` () =
             P5UOp (InstrUOp.IDiv, P5Int 4L )
             P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
     let res = testPass5 prg
     Assert.Equal(wanted, res)
     
@@ -391,7 +445,7 @@ let ``reg Alloc Test 3`` () =
              P5BOp (InstrBOp.Mov, P5Int 2L, P5Reg Reg.Rax)
              P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
          ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
     let res = testPass5 prg
     Assert.Equal(wanted, res)
     
@@ -406,7 +460,7 @@ let ``reg Alloc Test 4`` () =
              P5UOp (InstrUOp.IDiv, P5Int 4L)
              P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
          ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
     let res = testPass5 prg
     Assert.Equal(wanted, res)
     
@@ -419,14 +473,14 @@ let ``reg Alloc Test 5`` () =
          P5BOp (InstrBOp.Add, P5Int 1L, P5Reg Reg.Rax)
          P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
      ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
     let res = testPass5 prg
     Assert.Equal(wanted, res)
 
 [<Fact>]
 let ``reg Alloc Test 6`` () =
-    let p4 = P4Program (emptyInfo , [ (startLabel, emptyInfo, regAllocTestCaseRemoveTemp)  ]) |> stateRet
-    let res = stateRun (stateComb p4 regAlloc) (emptyCompileState ()) |> fst
+    let p4 = P4Program (emptyInfo , [ (startLabel, emptyInfo, regAllocTestCaseRemoveTemp)  ])
+    let res = regAlloc p4
     let p5 = [
        P5BOp (InstrBOp.Mov, P5Int 1L, P5Reg Reg.Rcx)
        P5BOp (InstrBOp.Add, P5Int 7L, P5Reg Reg.Rcx)
@@ -435,5 +489,5 @@ let ``reg Alloc Test 6`` () =
        P5UOp (InstrUOp.Neg, P5Reg Reg.Rcx)
        P5BOp (InstrBOp.Add, P5Reg Reg.Rcx, P5Reg Reg.Rax)
     ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ])
+    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
     Assert.Equal(wanted, res)

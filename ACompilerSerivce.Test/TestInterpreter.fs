@@ -68,7 +68,7 @@ let ``Interpreter test 9`` () =
     
 [<Fact>]
 let ``Interpreter test 10`` () =
-    let prg = "(eq? 10 't)"
+    let prg = "(eq? 10 #t)"
     let wanted = BoolValue false
     Assert.Equal(wanted, parseAndEval prg)
     
@@ -80,7 +80,7 @@ let ``Interpreter test 11`` () =
     
 [<Fact>]
 let ``Interpreter test 12`` () =
-    let prg = "(eq? 't 't)"
+    let prg = "(eq? #t #t)"
     let wanted = BoolValue true
     Assert.Equal(wanted, parseAndEval prg)
  

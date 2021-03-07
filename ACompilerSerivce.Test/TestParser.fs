@@ -35,7 +35,7 @@ let ``test 5`` () =
 [<Fact>]
 let ``test 6`` () =
     testFunc
-        "(if 't 1 2)"
+        "(if #t 1 2)"
         (Ok (SExp [(SId "if"); (SBool true); (SInt 1L); (SInt 2L)]))
 
 [<Fact>]
