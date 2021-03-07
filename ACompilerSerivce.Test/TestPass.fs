@@ -15,6 +15,7 @@ let prgList =
         "(let ([a 1]) (/ (+ (- a 10) 3) 4))"
         "(+ (* 10 1) 1)"
         "(if (let [(a #t)] a) 1 2)"
+        "(+ (if #t 1 2) 3)"
         "(eq? 1 #t)"
     |]
 
@@ -114,7 +115,7 @@ let ``Pass 1 test 4`` () =
 
 [<Fact>]
 let ``Pass 1 test 5`` () =
-    let prg = prgList.[6]
+    let prg = prgList.[7]
     let wanted = P1Bool false |> makeRes
     let res = testPass1 prg
     Assert.Equal(wanted, res)
@@ -176,6 +177,16 @@ let ``Pass 2 test 4`` () =
     | _ -> Impossible () |> raise
     *)
     Assert.Equal(wanted, res)
+
+[<Fact>]
+let ``Pass 2 test 5`` () =
+    let prg = prgList.[6]
+    let wanted =
+        P2LetExp (0
+                 ,P2IfExp (P2Atm (P2Bool true), P2IntAtm 1L, P2IntAtm 2L)
+                 ,P2OpExp (ExprOp.Add, P2Var 0, P2Int 3L))
+        |> makeRes
+    Assert.Equal(wanted, testPass2 prg)
     
 let toPass3 x = result {
     let! x' = toPass2 x 

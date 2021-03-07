@@ -170,7 +170,8 @@ let anf exp =
     let rec loop exp = 
         match exp with 
         | P1Int i -> P2Int i |> P2Atm 
-        | P1Id i -> P2Var i |> P2Atm 
+        | P1Id i -> P2Var i |> P2Atm
+        | P1Bool b -> P2Bool b |> P2Atm
         | P1LetExp (l, exp) -> 
             match l with
             | [] -> loop exp
@@ -180,6 +181,13 @@ let anf exp =
                     P2LetExp (var, v, t)
         | P1OpExp (op, expr1, expr2) -> 
             anfList (fun [e1; e2] -> P2OpExp (op, e1, e2)) [expr1; expr2]
+        | P1UOpExp (op, expr1) ->
+            anfList (fun [e1;] -> P2UOpExp (op, e1)) [expr1]
+        | P1IfExp (exp1, exp2, exp3) ->
+            let exp1' = loop exp1
+            let exp2' = loop exp2
+            let exp3' = loop exp3
+            P2IfExp (exp1', exp2', exp3')
     and anfList func expl =
         let rec handleExpl expl ids = 
             match expl with
@@ -188,6 +196,7 @@ let anf exp =
                 match hd with
                 | P1Id i -> handleExpl tl ((P2Var i) :: ids)
                 | P1Int i -> handleExpl tl ((P2Int i) :: ids)
+                | P1Bool b -> handleExpl tl ((P2Bool b) :: ids)
                 | _ -> 
                     let sym = genSym ()
                     let hdR = loop hd
