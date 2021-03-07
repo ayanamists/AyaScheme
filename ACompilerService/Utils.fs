@@ -2,10 +2,22 @@ module ACompilerService.Utils
 
 open System
 open System.Xml.Schema
+open FSharpx.Collections
 
 exception VarNotBound of string
 exception Impossible of unit
 
+
+type Env<'A, 'B when 'A : comparison> = BEnv of Map<'A, 'B>
+let rec searchEnv (env:Env<'A, 'B>) var =
+    match env with 
+    | BEnv hd -> hd.TryFind var
+    
+let rec addEnv (env:Env<'A, 'B>) var val' =
+    match env with
+    | BEnv hd -> hd.Add (var, val') |> BEnv
+
+let emptyEnv<'A, 'B when 'A : comparison > : Env<'A, 'B> = Map [] |> BEnv
 type State<'s, 'a> = St of ('s -> 'a * 's)
 
 let stateRet a = St (fun x -> (a, x))

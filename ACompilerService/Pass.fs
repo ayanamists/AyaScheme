@@ -1,11 +1,103 @@
 ﻿module ACompilerService.Pass
 
-open System.Collections.Generic
-open System.Drawing
 open Ast
+open FParsec
 open FSharpx.Collections
 open Utils
 open Coloring
+
+
+(*
+    type-check
+*)
+type ExprValueType = IntType = 0 | BoolType = 1
+
+type CompileError =
+    | TypeError of string
+    | VarNotBoundError of string
+
+let makeVarNotBoundError i = (VarNotBoundError (sprintf "%A is Not bound" i))
+type TypeEnv = Env<Identifier, ExprValueType>
+let typeCheck exp =
+    let rec typeCheckWithEnv exp env =
+        let typeEqual exp1 exp2 t1 t2 =
+            if t1 = t2
+            then t1 |> Result.Ok
+            else TypeError (sprintf "%A and %A should be same type" exp1 exp2) |> Result.Error
+        let typeEqualTo exp1 t1 target =
+            if t1 = target
+            then t1 |> Result.Ok
+            else TypeError (sprintf "%A should be %A, but have type %A" exp1 target t1) |> Result.Error
+        let opType exp1 exp2 t1 t2 target1 target2 target3 =
+            Result.bind (fun _ ->
+            Result.bind (fun _ ->
+                target3 |> Result.Ok
+            ) (typeEqualTo exp2 t2 target2)
+            ) (typeEqualTo exp1 t1 target1)
+        let typeOr t1 t2 =
+            match t1 with
+            | Result.Ok _ -> t1
+            | Result.Error error1 ->
+                match t2 with
+                | Result.Ok _ -> t2
+                | Result.Error error2 ->
+                    TypeError (sprintf "Type Error: %A or %A" error1 error2) |> Result.Error
+        match exp with
+        | Expr.Int _ -> ExprValueType.IntType |> Result.Ok
+        | Expr.Bool _ -> ExprValueType.BoolType |> Result.Ok
+        | Expr.Id i ->
+            match searchEnv env i with
+            | Some t -> t |> Result.Ok
+            | None -> makeVarNotBoundError i |> Result.Error
+        | Expr.LetExp (l, expr) ->
+            let rec handleL l =
+                match l with
+                | [] -> env |> Result.Ok
+                | (id, exp) :: tl ->
+                    Result.bind (fun hdType ->
+                        Result.bind (fun env ->
+                            Result.Ok (addEnv env id hdType)
+                        ) (handleL tl)
+                    ) (typeCheckWithEnv exp env)
+            Result.bind (fun newEnv ->
+                typeCheckWithEnv expr newEnv
+                ) (handleL l)
+        | Expr.IfExp (cond, ifTrue, ifFalse) ->
+            Result.bind (fun condType ->
+            Result.bind (fun _ ->
+            Result.bind (fun t1 ->
+            Result.bind (fun t2 ->
+                typeEqual ifTrue ifFalse t1 t2
+            ) (typeCheckWithEnv ifFalse env)
+            ) (typeCheckWithEnv ifTrue env)
+            ) (typeEqualTo cond condType ExprValueType.BoolType)
+            ) (typeCheckWithEnv cond env)
+        | Expr.OpExp (op, exp1, exp2) ->
+            Result.bind (fun expT1 ->
+            Result.bind (fun expT2 ->
+                match op with
+                | ExprOp.Add | ExprOp.Sub | ExprOp.Div | ExprOp.Mult ->
+                    opType exp1 exp2 expT1 expT2
+                           ExprValueType.IntType ExprValueType.IntType ExprValueType.IntType
+                | ExprOp.And | ExprOp.Or ->
+                    opType exp1 exp2 expT1 expT2
+                           ExprValueType.BoolType ExprValueType.BoolType ExprValueType.BoolType
+                | ExprOp.IEqB | ExprOp.IEq | ExprOp.IEqL | ExprOp.IB | ExprOp.IL ->
+                    opType exp1 exp2 expT1 expT2
+                           ExprValueType.IntType ExprValueType.IntType ExprValueType.BoolType
+                | ExprOp.Eq ->
+                    typeOr (opType exp1 exp2 expT1 expT2
+                                ExprValueType.IntType ExprValueType.IntType ExprValueType.BoolType)
+                           (opType exp1 exp2 expT1 expT2
+                                ExprValueType.BoolType ExprValueType.BoolType ExprValueType.BoolType)
+                | _ -> Impossible () |> raise
+            ) (typeCheckWithEnv exp2 env)
+            ) (typeCheckWithEnv exp1 env)
+        | Expr.UOpExp (op, exp1) ->
+            Result.bind (fun t1 ->
+                typeEqualTo exp1 t1 ExprValueType.BoolType
+            ) (typeCheckWithEnv exp1 env)
+    typeCheckWithEnv exp emptyEnv
 
 (*
     Pass 1: Lexical Address
@@ -19,23 +111,17 @@ open Coloring
                     (+ #3 #1)))
 *)
 
-type Pass1BlockEnv = Map<Identifier, Index>
-type Pass1Env =  Pass1BlockEnv list
-let rec searchEnv (env:Pass1Env) var =
-    match env with 
-    | hd :: tl -> if hd.ContainsKey(var) then hd.[var] |> Ok else searchEnv tl var
-    | [] -> Error () 
 
 let lexicalAddress exp =
-    let rec loop exp (env:Pass1Env) = 
+    let rec loop exp (env:Env<Identifier, Index>) = 
         match exp with
         | Expr.Int i -> P1Int i |> stateRet 
         | Expr.Id i -> 
             match (searchEnv env i) with
-            | Ok res -> res |> Pass1Out.P1Id |> stateRet
-            | Error _ -> VarNotBound (sprintf "Var %A not bound" i) |> raise
+            | Some res -> res |> Pass1Out.P1Id |> stateRet
+            | None -> VarNotBound (sprintf "Var %A not bound" i) |> raise
         | Expr.LetExp (l, expr) ->
-            let rec handleList l nowL (nowEnv:Pass1BlockEnv) =
+            let rec handleList l nowL (nowEnv:Env<Identifier, Index>) =
                 match l with
                 | [] -> stateRet (nowL, nowEnv)
                 | (id , exp) :: tl ->
@@ -43,11 +129,11 @@ let lexicalAddress exp =
                         let! cs = stateGet
                         let idx = genSym cs
                         let! x = loop exp env
-                        return! handleList tl ((idx, x) :: nowL) (nowEnv.Add(id, idx))
+                        return! handleList tl ((idx, x) :: nowL) (addEnv nowEnv id idx)
                     }
             state {
-               let! (nowL, nowEnv) = (handleList l [] (Pass1BlockEnv []))
-               let! nowExpr = loop expr (nowEnv :: env)
+               let! (nowL, nowEnv) = (handleList l [] env)
+               let! nowExpr = loop expr nowEnv
                return Pass1Out.P1LetExp ((List.rev nowL), nowExpr)
             }
         | Expr.OpExp (op, expr1, expr2) ->
@@ -56,7 +142,7 @@ let lexicalAddress exp =
                 let! e2 = loop expr2 env
                 return Pass1Out.P1OpExp (op, e1, e2 ) 
             }
-    loop exp []
+    loop exp emptyEnv<Identifier, Index>
 
 let pass1 = lexicalAddress
 

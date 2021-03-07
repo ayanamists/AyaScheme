@@ -7,6 +7,34 @@ open ACompilerService.Ast
 open ACompilerService.Parser
 open ACompilerService.Utils
 
+let toChecked x = parseToAst x |> typeCheck
+
+[<Fact>]
+let ``typeCheck Test 1`` () =
+    let prg = "(let ([a 1]) a)"
+    let wanted = Result.Ok ExprValueType.IntType
+    Assert.Equal(wanted, toChecked prg)
+    
+[<Fact>]
+let ``typeCheck Test 2`` () =
+    let prg = "(let ([t 't]) t)"
+    let wanted = Result.Ok ExprValueType.BoolType
+    Assert.Equal(wanted, toChecked prg)
+    
+[<Fact>]
+let ``typeCheck Test 3`` () =
+    let prg = "(if 1 't 't)"
+    match (toChecked prg) with
+    | Result.Error (TypeError _) -> Assert.True
+    | _ -> Assert.False
+    
+[<Fact>]
+let ``typeCheck Test 4`` () =
+    let prg = "(if 't 1 'f)"
+    match (toChecked prg) with
+    | Result.Error (TypeError _) -> Assert.True
+    | _ -> Assert.False
+
 let toPass1 x = parseToAst x |> pass1
 let testPass1 x = stateRun (toPass1 x) (emptyCompileState ()) 
 [<Fact>]
