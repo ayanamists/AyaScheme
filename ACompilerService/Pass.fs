@@ -1,5 +1,7 @@
 ﻿module ACompilerService.Pass
 
+open System
+open ACompilerService
 open Ast
 open FParsec
 open FSharpx.Collections
@@ -255,23 +257,33 @@ let explicitControl exp =
             addBlock cont contLabel
             explicitCond cond ifTrue' ifFalse'
     and explicitCond cond ifTrue ifFalse =
+        let makeGoto (expr:Lazy<Pass3Tail>) =
+            lazy match (expr.Force ()) with
+                 | P3TailGoto (P3Goto (label)) -> (label) |> P3Goto
+                 | other ->
+                     let label = genBlockLabel ()
+                     addBlock other label
+                     label |> P3Goto
         let simpleExp cond (exp1:Lazy<Pass3Tail>) (exp2:Lazy<Pass3Tail>) = 
-            let label1 = genBlockLabel ()
-            let label2 = genBlockLabel ()
-            addBlock (exp1.Force ()) label1
-            addBlock (exp2.Force ()) label2
-            P3If (cond, label1 |> P3Goto, label2 |> P3Goto)
+            P3If (cond, ((makeGoto exp1).Force ()) ,
+                  ((makeGoto exp2).Force ()) )
         match cond with
         | P2Atm (P2Int _) -> Impossible () |> raise
         | P2Atm (P2Bool b) -> if b then ifTrue.Force () else ifFalse.Force ()
         | P2Atm (P2Var i) -> simpleExp (P3Var i |> P3Atm) ifTrue ifFalse
         | P2OpExp (op, atm1, atm2) -> simpleExp (p2OpExpToP3OpExp op atm1 atm2) ifTrue ifFalse
         | P2UOpExp (op, atm1) -> simpleExp (p2UOpExpToP3 op atm1) ifTrue ifFalse
+        | P2LetExp (var, value, exp) ->
+            let cont = explicitCond exp ifTrue ifFalse
+            explicitAssign var value cont
         | P2IfExp (cond', ifTrue', ifFalse') ->
-             
-        
+            let gotoIfTrue = lazy ((makeGoto ifTrue).Force () |> P3TailGoto)
+            let gotoIfFalse = lazy ((makeGoto ifFalse).Force () |> P3TailGoto)
+            let ifTrue'' = lazy explicitCond ifTrue' gotoIfTrue gotoIfFalse
+            let ifFalse'' = lazy explicitCond ifFalse' gotoIfTrue gotoIfFalse
+            explicitCond cond' ifTrue'' ifFalse''
     let tail = explicitTail exp
-    P3Program (emptyInfo, [ (startLabel, tail) ] :: acc) |> Result.Ok
+    P3Program (emptyInfo, (startLabel, tail) :: acc) |> Result.Ok
 
 let pass3 = explicitControl
 

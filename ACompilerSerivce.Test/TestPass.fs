@@ -9,14 +9,18 @@ open ACompilerService.Utils
 
 let prgList = 
     [|
-        "(let ([a 1] [b 2]) (+ a b))"
-        "(let ([a 1]) (/ (+ a 3) 4))" 
-        "(let ([a 1]) (let ([b 2]) b))"
-        "(let ([a 1]) (/ (+ (- a 10) 3) 4))"
-        "(+ (* 10 1) 1)"
-        "(if (let [(a #t)] a) 1 2)"
-        "(+ (if #t 1 2) 3)"
-        "(eq? 1 #t)"
+        "(let ([a 1] [b 2]) (+ a b))"                // 0
+        "(let ([a 1]) (/ (+ a 3) 4))"                // 1
+        "(let ([a 1]) (let ([b 2]) b))"              // 2
+        "(let ([a 1]) (/ (+ (- a 10) 3) 4))"         // 3
+        "(+ (* 10 1) 1)"                             // 4
+        "(if (let [(a #t)] a) 1 2)"                  // 5
+        "(+ (if #t 1 2) 3)"                          // 6
+        "(eq? 1 #t)"                                 // 7
+        "(if (if (< 1 2) (< 3 4) #t)                 
+             (let ([a 1])
+                  a)
+             2)"                                     // 8
     |]
 
 let toChecked x =
