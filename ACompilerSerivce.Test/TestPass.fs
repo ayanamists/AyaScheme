@@ -237,6 +237,11 @@ let ``Pass 3 test 4 `` () =
     let res =testPass3 prg 
     Assert.Equal(wanted, res)
 
+[<Fact>]
+let ``Pass 3 test 5`` () =
+    let prg = prgList.[5]
+    let p3 =
+
 let toPass4 x = Result.bind pass4 (toPass3 x)
 let testPass4 x = (toPass4 x)
 [<Fact>]

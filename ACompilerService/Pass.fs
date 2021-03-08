@@ -1,9 +1,7 @@
 ﻿module ACompilerService.Pass
 
 open System
-open ACompilerService
 open Ast
-open FParsec
 open FSharpx.Collections
 open Utils
 open Coloring

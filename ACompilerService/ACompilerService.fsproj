@@ -11,6 +11,7 @@
     <Compile Include="Parser.fs" />
     <Compile Include="Pass.fs" />
     <Compile Include="Interpreter.fs" />
+    <Compile Include="IrParser.fs" />
   </ItemGroup>
 
   <ItemGroup>
