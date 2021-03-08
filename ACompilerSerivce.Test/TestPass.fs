@@ -6,6 +6,7 @@ open ACompilerService.Pass
 open ACompilerService.Ast
 open ACompilerService.Parser
 open ACompilerService.Utils
+open ACompilerService.IrParser
 
 let prgList = 
     [|
@@ -203,9 +204,18 @@ let ``Pass 3 test 1`` () =
     let p3 = P3Seq (P3Assign (0, p3IntAtm 1L)
                    ,P3Seq(P3Assign (1, p3IntAtm 2L)
                          ,P3Return (P3BPrim (ExprOp.Add, P3Var 0, P3Var 1))))
-    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ]) |> makeRes
+    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ]) 
+    let wanted' = wanted|> makeRes
+    let p3Str = "
+    _start:
+        (var 0) = 1
+        (var 1) = 2
+        return +((var 0), (var 1))
+    "
+    let parseRes = parseP3 p3Str
+    Assert.Equal(wanted, parseRes)
     let res = testPass3 prg
-    Assert.Equal(wanted, res)
+    Assert.Equal(wanted', res)
 
 [<Fact>]
 let ``Pass 3 test 2`` () =
@@ -213,9 +223,19 @@ let ``Pass 3 test 2`` () =
     let p3 = P3Seq (P3Assign (0, p3IntAtm 1L)
                    ,P3Seq (P3Assign (1, P3BPrim (ExprOp.Add, P3Var 0, P3Int 3L))
                           ,P3Return (P3BPrim (ExprOp.Div, P3Var 1, P3Int 4L))))
-    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ]) |> makeRes
+    let wanted = P3Program (emptyInfo, [ (startLabel, p3) ]) 
+    let wanted' = wanted|> makeRes
+    let p3Str = "
+    _start:
+        (var 0) = 1
+        (var 1) = +((var 0), 3)
+        return /((var 1), 4)
+    "
+    let parseRes = parseP3 p3Str
+    Assert.Equal(wanted, parseRes)
+ 
     let res = testPass3 prg
-    Assert.Equal(wanted, res)
+    Assert.Equal(wanted', res)
 
 [<Fact>]
 let ``Pass 3 test 3`` () =
@@ -237,13 +257,14 @@ let ``Pass 3 test 4 `` () =
     let res =testPass3 prg 
     Assert.Equal(wanted, res)
 
+(*
 [<Fact>]
 let ``Pass 3 test 5`` () =
     let prg = prgList.[5]
-    let p3 =
+    let p3 = *)
 
 let toPass4 x = Result.bind pass4 (toPass3 x)
-let testPass4 x = (toPass4 x)
+let testPass4 x = (toPass4 x) 
 [<Fact>]
 let ``Pass 4 test 1 `` () =
     let prg = prgList.[0]
