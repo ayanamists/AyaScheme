@@ -327,6 +327,8 @@ let genFromBPrim op atm1 atm2 leftAtm =
         | ExprOp.Sub -> simpleOp InstrBOp.Sub newAtm1 newAtm2
         | ExprOp.Mult -> multOrDiv InstrUOp.IMul newAtm1 newAtm2
         | ExprOp.Div -> multOrDiv InstrUOp.IDiv newAtm1 newAtm2
+        | ExprOp.And -> commOp InstrBOp.And newAtm1 newAtm2
+        | ExprOp.Or -> commOp InstrBOp.Or newAtm1 newAtm2
         | _ -> Impossible () |> raise
     let target = target
     (List.filter (fun x -> isUselessP4Instr x |> not) target)

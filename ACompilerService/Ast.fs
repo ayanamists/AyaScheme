@@ -111,6 +111,10 @@ type InstrBOp =
 | Add = 0
 | Mov = 1
 | Sub = 2
+| And = 3
+| Or = 4
+| Xor = 5
+| Cmp = 6
 
 type InstrCtrOp = 
 | Ret = 0

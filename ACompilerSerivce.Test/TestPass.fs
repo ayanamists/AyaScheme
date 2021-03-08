@@ -181,11 +181,6 @@ let ``Pass 2 test 4`` () =
                            ,P2OpExp (ExprOp.Div, P2Var 1, P2Int 4L)))
        |> makeRes
     let res = testPass2 prg
-    (*
-    match res with
-    | Result.Ok t -> printfn "%A" t
-    | _ -> Impossible () |> raise
-    *)
     Assert.Equal(wanted, res)
 
 [<Fact>]
