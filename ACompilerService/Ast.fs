@@ -1,6 +1,6 @@
 ﻿module ACompilerService.Ast
 
-open ACompilerService.Utils
+open Utils
 
 type Value = 
 | IntValue of int64
@@ -66,19 +66,25 @@ let P2VarAtm x = P2Var x |> P2Atm
 
 type Info = string
 type Label = string
+
 type Pass3Info = Info
+type Pass3Label = Label
 type Pass3Atm =
 | P3Int of int64
 | P3Var of Index
+| P3Bool of bool
 type Pass3Exp = 
 | P3Atm of Pass3Atm
 | P3BPrim of ExprOp * Pass3Atm * Pass3Atm
+| P3UPrim of ExprUOp * Pass3Atm
+type Pass3Goto = P3Goto of Label
 type Pass3Stmt =
 | P3Assign of Index * Pass3Exp
 type Pass3Tail = 
 | P3Return of Pass3Exp
 | P3Seq of Pass3Stmt * Pass3Tail
-type Pass3Label = Label
+| P3TailGoto of Pass3Goto
+| P3If of Pass3Exp * Pass3Goto * Pass3Goto
 type Pass3Block = Pass3Label * Pass3Tail  
 type Pass3Out = 
 | P3Program of Pass3Info * Pass3Block list
@@ -87,7 +93,7 @@ let startLabel = "_start"
 let conclusionLabel = "conclusion"
 let p3IntAtm i = P3Int i |> P3Atm
 let p3VarAtm i = P3Var i |> P3Atm
-
+let p3BoolAtm b = P3Bool b |> P3Atm
 
 type Reg = 
 | Rax = 0 | Rbx = 1 | Rcx = 2  | Rdx = 3  | Rsi = 4  | Rbi = 5  | Rsp = 6  | Rbp = 7

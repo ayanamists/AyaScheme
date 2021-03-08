@@ -214,15 +214,27 @@ let p2AtmToP3Atm atm =
     match atm with
     | P2Int i -> P3Int i
     | P2Var i -> P3Var i
+    | P2Bool b -> P3Bool b
 let p2OpExpToP3OpExp op atm1 atm2 =
     P3BPrim (op, atm1 |> p2AtmToP3Atm, atm2 |> p2AtmToP3Atm)
+let p2UOpExpToP3 op atm1 = P3UPrim (op, atm1 |> p2AtmToP3Atm)
 
 let explicitControl exp =
+    let mutable acc = []
+    let addBlock instrs label = 
+        acc <- (label, instrs) :: acc
+    let addBlock' instrs = 
+        acc <- (genBlockLabel (), instrs) :: acc
     let rec explicitTail exp = 
         match exp with
         | P2Atm atm -> let p3Atm = p2AtmToP3Atm atm in P3Atm p3Atm |> P3Return
         | P2LetExp (idx, rhs, e) -> let cont = explicitTail e in explicitAssign idx rhs cont
         | P2OpExp (op, atm1, atm2) -> let p3Opbp = p2OpExpToP3OpExp op atm1 atm2 in P3Return p3Opbp
+        | P2UOpExp (op, atm1) -> p2UOpExpToP3 op atm1 |> P3Return
+        | P2IfExp (cond, ifTrue, ifFalse) -> 
+            let ifTrue' = lazy explicitTail ifTrue
+            let ifFalse' = lazy explicitTail ifFalse
+            explicitCond cond ifTrue' ifFalse'
     and explicitAssign idx rhs cont = 
         match rhs with
         | P2Atm atm -> let p3Atm = p2AtmToP3Atm atm in P3Seq (P3Assign (idx, p3Atm |> P3Atm), cont)
@@ -232,8 +244,34 @@ let explicitControl exp =
         | P2OpExp (op, atm1, atm2) -> 
             let p3Opbp = p2OpExpToP3OpExp op atm1 atm2
             P3Seq (P3Assign (idx, p3Opbp), cont)
+        | P2UOpExp (op, atm1) ->
+            let p3Uop = p2UOpExpToP3 op atm1
+            P3Seq (P3Assign (idx, p3Uop), cont)
+        | P2IfExp (cond, ifTrue, ifFalse) ->
+            let contLabel = genBlockLabel ()
+            let ifCont = P3Goto contLabel |> P3TailGoto
+            let ifTrue' = lazy explicitAssign idx ifTrue ifCont
+            let ifFalse' = lazy explicitAssign idx ifFalse ifCont
+            addBlock cont contLabel
+            explicitCond cond ifTrue' ifFalse'
+    and explicitCond cond ifTrue ifFalse =
+        let simpleExp cond (exp1:Lazy<Pass3Tail>) (exp2:Lazy<Pass3Tail>) = 
+            let label1 = genBlockLabel ()
+            let label2 = genBlockLabel ()
+            addBlock (exp1.Force ()) label1
+            addBlock (exp2.Force ()) label2
+            P3If (cond, label1 |> P3Goto, label2 |> P3Goto)
+        match cond with
+        | P2Atm (P2Int _) -> Impossible () |> raise
+        | P2Atm (P2Bool b) -> if b then ifTrue.Force () else ifFalse.Force ()
+        | P2Atm (P2Var i) -> simpleExp (P3Var i |> P3Atm) ifTrue ifFalse
+        | P2OpExp (op, atm1, atm2) -> simpleExp (p2OpExpToP3OpExp op atm1 atm2) ifTrue ifFalse
+        | P2UOpExp (op, atm1) -> simpleExp (p2UOpExpToP3 op atm1) ifTrue ifFalse
+        | P2IfExp (cond', ifTrue', ifFalse') ->
+             
+        
     let tail = explicitTail exp
-    P3Program (emptyInfo, [ (startLabel, tail) ]) |> Result.Ok
+    P3Program (emptyInfo, [ (startLabel, tail) ] :: acc) |> Result.Ok
 
 let pass3 = explicitControl
 

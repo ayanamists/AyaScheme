@@ -8,8 +8,9 @@ exception VarNotBound of string
 exception Impossible of unit
 
 type Index = int
-type CompileState =  { mutable newVarIdx: Index; }
-let emptyCompileState () = { newVarIdx = 0; }
+type CompileState =  { mutable newVarIdx: Index;
+                       mutable blockIds: Index; }
+let emptyCompileState () = { newVarIdx = 0; blockIds = 0;}
 let mutable compileState = emptyCompileState ()
 let renewCompileState () =
     compileState <- emptyCompileState ()
@@ -19,6 +20,10 @@ let genSym () =
     idx
 let getMaxIdxOfSym state =
      state.newVarIdx 
+let genBlockLabel () =
+    let idx = compileState.blockIds
+    compileState.blockIds <- idx + 1
+    idx |> sprintf "block-%A"
 
 type Env<'A, 'B when 'A : comparison> = BEnv of Map<'A, 'B>
 let rec searchEnv (env:Env<'A, 'B>) var =
