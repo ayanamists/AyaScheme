@@ -292,18 +292,19 @@ let p3AtmToP4Atm p3Atm =
     match p3Atm with
     | P3Int i -> P4Int i
     | P3Var i -> P4Var i
+    | P3Bool b -> (if b then 0L else 1L) |> P4Int
 
 let isReg atm reg =
     match atm with
     | P4Reg r -> r = reg
     | _ -> false
 
-let genFromBPrim op atm1 atm2 leftAtm = 
-    let case1 op a1 a2 = [ P4BOp (InstrBOp.Mov, a2, leftAtm)
-                           P4BOp (op, a1, leftAtm) ] 
-    let case2 op a1 a2 = [ P4BOp (InstrBOp.Mov, a1, leftAtm)
-                           P4BOp (op, a2, leftAtm)] 
-    let case3 op a1 a2 = 
+let genFromBPrim op atm1 atm2 leftAtm =
+    let newAtm1 = p3AtmToP4Atm atm1
+    let newAtm2 = p3AtmToP4Atm atm2
+    let simpleOp op a1 a2 = [ P4BOp (InstrBOp.Mov, a1, leftAtm)
+                              P4BOp (op, a2, leftAtm)] 
+    let multOrDiv op a1 a2 = 
         if isReg leftAtm Reg.Rax
         then 
             [P4BOp (InstrBOp.Mov, a1, leftAtm)
@@ -316,24 +317,16 @@ let genFromBPrim op atm1 atm2 leftAtm =
                    P4UOp (op, a2)
                    P4BOp (InstrBOp.Mov, P4Reg (Reg.Rax), leftAtm)
                    P4BOp (InstrBOp.Mov, tempVar, P4Reg Reg.Rax) ]
-    let newAtm1 = p3AtmToP4Atm atm1
-    let newAtm2 = p3AtmToP4Atm atm2
+    let commOp op atm1 atm2 =
+        match atm1, atm2 with
+        | P4Int _, P4Var _ -> simpleOp op atm2 atm1
+        | _, _ -> simpleOp op atm1 atm2
     let target = 
         match op with
-        | ExprOp.Add -> 
-            match atm1, atm2 with
-            | P3Int i1, P3Var i2 -> case1 InstrBOp.Add newAtm1 newAtm2
-            | P3Var i1, P3Int i2 -> case1 InstrBOp.Add newAtm2 newAtm1
-            | P3Var i1, P3Var i2 -> case1 InstrBOp.Add newAtm1 newAtm2
-            | P3Int i1, P3Int i2 -> case1 InstrBOp.Add (P4Int i1) (P4Int i2)
-        | ExprOp.Sub -> 
-            match atm1, atm2 with
-            | P3Int i1, P3Var i2 -> case2 InstrBOp.Sub newAtm1 newAtm2
-            | P3Var i1, P3Int i2 -> case2 InstrBOp.Sub newAtm1 newAtm2
-            | P3Var i1, P3Var i2 -> case2 InstrBOp.Sub newAtm1 newAtm2
-            | P3Int i1, P3Int i2 -> case2 InstrBOp.Sub (P4Int i1) (P4Int i2)
-        | ExprOp.Mult -> case3 InstrUOp.IMul newAtm1 newAtm2
-        | ExprOp.Div -> case3 InstrUOp.IDiv newAtm1 newAtm2
+        | ExprOp.Add -> commOp InstrBOp.Add newAtm1 newAtm2
+        | ExprOp.Sub -> simpleOp InstrBOp.Sub newAtm1 newAtm2
+        | ExprOp.Mult -> multOrDiv InstrUOp.IMul newAtm1 newAtm2
+        | ExprOp.Div -> multOrDiv InstrUOp.IDiv newAtm1 newAtm2
         | _ -> Impossible () |> raise
     let target = target
     (List.filter (fun x -> isUselessP4Instr x |> not) target)

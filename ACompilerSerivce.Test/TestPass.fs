@@ -312,6 +312,7 @@ let ``Pass 3 test 7`` () =
     let wanted = p3 |> makeRes
     let res = testPass3 prg
     Assert.Equal(wanted, res)
+    
 let toPass4 x = Result.bind pass4 (toPass3 x)
 let testPass4 x = (toPass4 x) 
 [<Fact>]
@@ -321,12 +322,13 @@ let ``Pass 4 test 1 `` () =
         [ 
             P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 0)
             P4BOp (InstrBOp.Mov, P4Int 2L, P4Var 1)
-            P4BOp (InstrBOp.Mov, P4Var 1, P4Reg Reg.Rax)
-            P4BOp (InstrBOp.Add, P4Var 0, P4Reg Reg.Rax)
+            P4BOp (InstrBOp.Mov, P4Var 0, P4Reg Reg.Rax)
+            P4BOp (InstrBOp.Add, P4Var 1, P4Reg Reg.Rax)
             P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ]) |> makeRes
-    let res = testPass4 prg 
+    let res = testPass4 prg
+    printResult res
     Assert.Equal(wanted, res)
 [<Fact>]
 let ``Pass 4 test 2 `` () =
@@ -504,8 +506,8 @@ let testPass5 x = toPass5 x
 let ``reg Alloc Test 1`` () =
     let prg = prgList.[0]
     let p5 = [ 
-        P5BOp (InstrBOp.Mov, P5Int 2L, P5Reg Reg.Rax)
-        P5BOp (InstrBOp.Add, P5Int 1L, P5Reg Reg.Rax)
+        P5BOp (InstrBOp.Mov, P5Int 1L, P5Reg Reg.Rax)
+        P5BOp (InstrBOp.Add, P5Int 2L, P5Reg Reg.Rax)
         P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
     ]
     let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
