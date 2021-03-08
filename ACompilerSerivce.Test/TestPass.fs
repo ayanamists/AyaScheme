@@ -1,6 +1,7 @@
 ﻿module TestPass
 
 open System
+open Microsoft.VisualStudio.TestPlatform.CommunicationUtilities.Resources
 open Xunit
 open ACompilerService.Pass
 open ACompilerService.Ast
@@ -8,6 +9,10 @@ open ACompilerService.Parser
 open ACompilerService.Utils
 open ACompilerService.IrParser
 
+let printResult r =
+    match r with
+    | Result.Ok t -> printfn "%A" t
+    | Result.Error e -> printfn "%A" e
 let prgList = 
     [|
         "(let ([a 1] [b 2]) (+ a b))"                // 0
@@ -257,12 +262,56 @@ let ``Pass 3 test 4 `` () =
     let res =testPass3 prg 
     Assert.Equal(wanted, res)
 
-(*
 [<Fact>]
 let ``Pass 3 test 5`` () =
     let prg = prgList.[5]
-    let p3 = *)
+    let p3 = parseP3 "
+    _start:
+        (var 0) = #t
+        if (var 0) goto label(block-0)
+        goto label(block-1)
+    block-1:
+        return 2
+    block-0:
+        return 1
+    "
+    let wanted = p3 |> makeRes
+    let res = testPass3 prg
+    Assert.Equal(wanted, res)
 
+[<Fact>]
+let ``Pass 3 test 6`` () =
+    let prg = prgList.[6]
+    let p3 = parseP3 "
+    _start:
+        (var 0) = 1
+        goto label(block-0)
+    block-0:
+        return +((var 0), 3)
+    "
+    let wanted = p3 |> makeRes
+    let res = testPass3 prg
+    Assert.Equal(wanted, res)
+
+[<Fact>]
+let ``Pass 3 test 7`` () =
+    let prg = prgList.[8]
+    let p3 = parseP3 "
+    _start:
+        if <(1, 2) goto label(block-2)
+        goto label(block-0)
+    block-2:
+        if <(3, 4) goto label(block-0)
+        goto label(block-1)
+    block-1:
+        return 2
+    block-0:
+        (var 0) = 1
+        return (var 0)
+   "
+    let wanted = p3 |> makeRes
+    let res = testPass3 prg
+    Assert.Equal(wanted, res)
 let toPass4 x = Result.bind pass4 (toPass3 x)
 let testPass4 x = (toPass4 x) 
 [<Fact>]

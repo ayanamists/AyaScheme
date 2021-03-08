@@ -51,7 +51,7 @@ let parseLabel =
 let parseP3Goto = pstring "goto" >>. spaces >>. parseLabel |>> P3Goto
 let parseP3Return = pstring "return" >>. spaces >>. parseP3Exp |>> fun x -> x |> P3Return
 let parseP3If = 
-    pstring "if" >>. spaces1 >>. parseP3BOpExpr .>>. 
+    pstring "if" >>. spaces1 >>. parseP3Exp .>>. 
     (spaces1 >>. parseP3Goto .>>. (spaces1 >>. parseP3Goto)) 
     |>> fun (exp1, (exp2, exp3)) -> P3If (exp1, exp2, exp3)
 let parseP3TailGoto = parseP3Goto |>> P3TailGoto
