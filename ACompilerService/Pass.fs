@@ -16,6 +16,19 @@ type CompileError =
     | TypeError of string
     | VarNotBoundError of string
 
+let rec transformP1If cond =
+    match cond with
+    | P1OpExp (ExprOp.And, c1, c2) -> 
+        let c1' = transformP1If c1
+        let c2' = transformP1If c2
+        P1IfExp (c1', c2', P1Bool false)
+    | P1OpExp (ExprOp.Or, c1, c2) -> 
+        let c1' = transformP1If c1
+        let c2' = transformP1If c2
+        P1IfExp (c1', P1Bool true, c2')
+    | _ -> cond
+
+     
 let makeVarNotBoundError i = (VarNotBoundError (sprintf "%A is Not bound" i))
 let typeCheck exp =
     let rec typeCheckWithEnv exp env =
@@ -62,7 +75,7 @@ let typeCheck exp =
                 let! (ifFalse', tIfFalse) = (typeCheckWithEnv ifFalse env)
                 let! _ = (typeEqualTo cond tCond ExprValueType.BoolType)
                 let! _ = (typeEqual ifTrue' ifFalse' tIfFalse tIfTrue)
-                return (P1IfExp (cond', ifTrue', ifFalse'), tIfTrue)
+                return (P1IfExp (transformP1If cond', ifTrue', ifFalse'), tIfTrue)
             }
         | P1OpExp (op, exp1, exp2) ->
             Result.bind (fun (exp1', expT1) ->
@@ -321,6 +334,11 @@ let genFromBPrim op atm1 atm2 leftAtm =
         match atm1, atm2 with
         | P4Int _, P4Var _ -> simpleOp op atm2 atm1
         | _, _ -> simpleOp op atm1 atm2
+    let cmpOp op atm1 atm2 = 
+        [ P4BOp (InstrBOp.Cmp, atm1, atm2)
+          P4UOp (op, P4Reg Reg.Rax)
+          P4BOp (InstrBOp.MovZb, P4Reg Reg.Rax, leftAtm)
+        ]
     let target = 
         match op with
         | ExprOp.Add -> commOp InstrBOp.Add newAtm1 newAtm2
@@ -329,9 +347,45 @@ let genFromBPrim op atm1 atm2 leftAtm =
         | ExprOp.Div -> multOrDiv InstrUOp.IDiv newAtm1 newAtm2
         | ExprOp.And -> commOp InstrBOp.And newAtm1 newAtm2
         | ExprOp.Or -> commOp InstrBOp.Or newAtm1 newAtm2
+        | ExprOp.IEq -> cmpOp InstrUOp.SetE newAtm1 newAtm2
+        | ExprOp.IB -> cmpOp InstrUOp.SetG newAtm1 newAtm2
+        | ExprOp.IL -> cmpOp InstrUOp.SetB newAtm1 newAtm2
+        | ExprOp.IEqB -> cmpOp InstrUOp.SetGe newAtm1 newAtm2
+        | ExprOp.IEqL -> cmpOp InstrUOp.SetBe newAtm1 newAtm2
         | _ -> Impossible () |> raise
     let target = target
     (List.filter (fun x -> isUselessP4Instr x |> not) target)
+
+let makeJmpByOp op = 
+    match op with
+    | ExprOp.Eq | ExprOp.IEq -> (InstrCtrOp.Jz, InstrCtrOp.Jmp)
+    | ExprOp.IEqB -> (InstrCtrOp.Jge, InstrCtrOp.Jmp)
+    | ExprOp.IB -> (InstrCtrOp.Jg, InstrCtrOp.Jmp)
+    | ExprOp.IL -> (InstrCtrOp.Jb, InstrCtrOp.Jmp)
+    | ExprOp.IEqL -> (InstrCtrOp.Jbe, InstrCtrOp.Jmp)
+    | _ -> Impossible () |> raise
+let rec genFromIfExpr cond ifTrue ifFalse =
+    let trueLabel = getP3GotoLabel ifTrue
+    let falseLabel = getP3GotoLabel ifFalse
+    match cond with
+    | P3Atm (P3Var v) -> [ P4BOp (InstrBOp.Test, P4Var v, P4Var v)  
+                           P4CtrOp (InstrCtrOp.Jnz, trueLabel)
+                           P4CtrOp (InstrCtrOp.Jmp, falseLabel) ]
+    | P3Atm (P3Bool b) -> [ P4CtrOp (InstrCtrOp.Jmp, if b then trueLabel else falseLabel) ]
+    | P3BPrim (op, atm1, atm2) ->
+        let newAtm1 = p3AtmToP4Atm atm1
+        let newAtm2 = p3AtmToP4Atm atm2
+        let (j1, j2) = makeJmpByOp op
+        [ P4BOp (InstrBOp.Cmp, newAtm1, newAtm2)
+          P4CtrOp (j1, trueLabel)
+          P4CtrOp (j2, falseLabel)
+        ]
+    | P3UPrim (op, atm1) -> genFromIfExpr (P3Atm atm1) ifFalse ifTrue
+    | _ -> Impossible () |> raise
+let genFromUOp op atm1 = 
+    match op with
+    | ExprUOp.Not -> P4BOp (InstrBOp.Xor, P4Int 0xffffffffffffffL, p3AtmToP4Atm atm1)
+    | _ -> Impossible () |> raise
 
 let selectInstructions p3Prg = 
     let rec handleTail (t:Pass3Tail) acc =
@@ -344,22 +398,33 @@ let selectInstructions p3Prg =
             | P3BPrim (op, atm1, atm2) ->
                 let thisCode1 = genFromBPrim op atm1 atm2 (P4Var idx)
                 handleTail tail ( (List.rev thisCode1) @ acc )
+            | P3UPrim (op, atm1) -> 
+                let thisCode = genFromUOp op atm1
+                handleTail tail (thisCode :: acc)
+            | _ -> Impossible () |> raise
         | P3Return (p3Exp) -> 
-            let retCode = P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
+            let lastCode = P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
             match p3Exp with
             | P3Atm atm ->
                 let thisCode = P4BOp (InstrBOp.Mov, p3AtmToP4Atm atm, P4Reg Reg.Rax)
-                retCode :: thisCode :: acc |> List.rev 
+                lastCode :: thisCode :: acc |> List.rev 
             | P3BPrim (op, atm1, atm2) ->
                 let thisCode = genFromBPrim op atm1 atm2 (P4Reg Reg.Rax)
-                retCode :: (List.rev thisCode) @ acc |> List.rev
+                lastCode :: (List.rev thisCode) @ acc |> List.rev
+            | P3UPrim (op, atm1) -> 
+                let thisCode = genFromUOp op atm1
+                lastCode :: thisCode :: acc |> List.rev
+        | P3TailGoto (P3Goto label) -> P4CtrOp (InstrCtrOp.Jmp, label) :: acc |> List.rev
+        | P3If (cond, ifTrue, ifFalse) -> 
+            let thisCode = genFromIfExpr cond ifTrue ifFalse
+            (thisCode |> List.rev) @ acc |> List.rev
     match p3Prg with
     | P3Program (info, blocks) ->
         let newBlocks = List.map (fun (l, t) ->
                         let newTail = (handleTail t []) 
                         (l, emptyP4BlockInfo, newTail) ) blocks
-        let newBlocks = newBlocks
         P4Program (info, newBlocks) |> Result.Ok
+    | _ -> Impossible () |> raise
 
 let pass4 = selectInstructions
 

@@ -94,9 +94,19 @@ let conclusionLabel = "conclusion"
 let p3IntAtm i = P3Int i |> P3Atm
 let p3VarAtm i = P3Var i |> P3Atm
 let p3BoolAtm b = P3Bool b |> P3Atm
+let getP3GotoLabel goto =
+    match goto with
+    | P3Goto l -> l
 
+(*
+    for convinet, we use
+        sete rax            (1)
+    instead of
+        sete al             (2)
+    in all pass involved, (1) => (2).
+*)
 type Reg = 
-| Rax = 0 | Rbx = 1 | Rcx = 2  | Rdx = 3  | Rsi = 4  | Rbi = 5  | Rsp = 6  | Rbp = 7
+| Rax = 0 | Rbx = 1 | Rcx = 2  | Rdx = 3  | Rsi = 4  | Rdi = 5  | Rsp = 6  | Rbp = 7
 | R8 = 8  | R9 = 9  | R10 = 10 | R11 = 11 | R12 = 12 | R13 = 13 | R14 = 14 | R15 = 15
 
 type InstrUOp = 
@@ -106,20 +116,29 @@ type InstrUOp =
 | IDiv = 6
 | Push = 7
 | Pop = 8
+| SetE = 9 | SetGe = 10 | SetG = 11 | SetB = 12 | SetBe = 13
 
 type InstrBOp =
 | Add = 0
 | Mov = 1
+| MovZb = 2
 | Sub = 2
 | And = 3
 | Or = 4
 | Xor = 5
 | Cmp = 6
+| Test = 7
 
 type InstrCtrOp = 
 | Ret = 0
 | Call = 1
 | Jmp = 2
+| Jz = 3
+| Jg = 4
+| Jge = 5
+| Jb = 6
+| Jbe = 7
+| Jnz = 8
 
 type Pass4RegForVar = NoReg | Reg4Var of Reg
 type Pass4Info = Info

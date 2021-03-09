@@ -77,3 +77,72 @@ let parseP3 x =
     | Failure(e, _, _) -> 
         printfn "%A" e
         P3Program (emptyInfo, [])
+
+let parseReg : Parser<Reg, unit> = 
+    (pstring "rax" >>% Reg.Rax)
+    <|> (pstring "rbx" >>% Reg.Rbx) <|> (pstring "rcx" >>% Reg.Rcx) 
+    <|> (pstring "rdx" >>% Reg.Rdx) <|> (pstring "rsi" >>% Reg.Rsi)
+    <|> (pstring "rdi" >>% Reg.Rdi) <|> (pstring "rbp" >>% Reg.Rbp)
+    <|> (pstring "rsp" >>% Reg.Rsp) <|> (pstring "r8" >>% Reg.R8)
+    <|> (pstring "r9" >>% Reg.R9) <|> (pstring "r10" >>% Reg.R10)
+    <|> (pstring "r11" >>% Reg.R11) <|> (pstring "r12" >>% Reg.R12)
+    <|> (pstring "r13" >>% Reg.R13) <|> (pstring "r14" >>% Reg.R14)
+    <|> (pstring "r15" >>% Reg.R8)
+
+let parseP4Var = parseVar |>> P4Var
+let parseP4Int = pint64 |>> P4Int
+let parseP4Reg = parseReg |>> P4Reg
+let parseLabelChar = asciiLetter <|> (pchar '-') <|> (digit) 
+let parseRawLabel = many1CharsTill parseLabelChar spaces1
+let parseP4Atm = parseP4Var <|> parseP4Int <|> parseP4Reg
+let parseInstrBOp : Parser<InstrBOp, unit> = 
+    (pstring "movzb" >>%  InstrBOp.MovZb)
+    <|> (pstring "add" >>% InstrBOp.Add)
+    <|> (pstring "sub" >>% InstrBOp.Sub)
+    <|> (pstring "mov" >>% InstrBOp.Mov)
+    <|> (pstring "and" >>% InstrBOp.And)
+    <|> (pstring "or" >>% InstrBOp.Or)
+    <|> (pstring "cmp" >>% InstrBOp.Cmp)
+    <|> (pstring "xor" >>% InstrBOp.Xor)
+    <|> (pstring "test" >>% InstrBOp.Test)
+let parseInstrUOp : Parser<InstrUOp, unit> =
+    (pstring "neg" >>% InstrUOp.Neg)
+    <|> (pstring "mul" >>% InstrUOp.Mul) <|> (pstring "imul" >>% InstrUOp.IMul)
+    <|> (pstring "idiv" >>% InstrUOp.IDiv) <|> (pstring "push" >>% InstrUOp.Push)
+    <|> (pstring "pop" >>% InstrUOp.Pop) <|> (pstring "sete" >>% InstrUOp.SetE)
+    <|> (pstring "setge" >>% InstrUOp.SetGe) <|> (pstring "setbe" >>% InstrUOp.SetBe)
+    <|> (pstring "setg" >>% InstrUOp.SetG) <|> (pstring "setb" >>% InstrUOp.SetB)
+let parseInstrCtrOp : Parser<InstrCtrOp, unit> = 
+    (pstring "jmp" >>% InstrCtrOp.Jmp) <|> (pstring "call" >>% InstrCtrOp.Call)
+    <|> (pstring "ret" >>% InstrCtrOp.Ret) <|> (pstring "jz" >>% InstrCtrOp.Jz)
+    <|> (pstring "jge" >>% InstrCtrOp.Jge) <|> (pstring "jg" >>% InstrCtrOp.Jg) 
+    <|> (pstring "jbe" >>% InstrCtrOp.Jbe) <|> (pstring "jb" >>% InstrCtrOp.Jb)
+    <|> (pstring "jnz" >>% InstrCtrOp.Jnz)
+let parseP4BOp = 
+    parseInstrBOp .>>. (spaces1 >>. parseP4Atm .>>. 
+        (spaces >>. pchar ',' >>. spaces >>. parseP4Atm))
+    |>> fun (op, (atm1, atm2)) -> P4BOp (op, atm1, atm2)
+let parseP4UOp = 
+    parseInstrUOp .>>. (spaces1 >>. parseP4Atm)
+    |>> fun (op, atm) -> P4UOp (op, atm)
+let parseP4CtrOp = 
+    parseInstrCtrOp .>>. (spaces1 >>. parseRawLabel)
+    |>> fun (op, label) -> P4CtrOp (op, label)
+let parseP4Instr = parseP4BOp <|> parseP4CtrOp <|> parseP4UOp
+let parseP4InstrSeq =  
+    sepEndBy parseP4Instr spaces
+let parseP4Block : Parser<Pass4Block, unit> = 
+    (spaces >>. (charsTillString ":" false 100) 
+        .>> spaces .>> pchar ':' .>> spaces ) 
+    .>>. parseP4InstrSeq
+    |>> fun (label, instrs) -> (label, emptyP4BlockInfo, instrs)
+let parseP4' = 
+    sepEndBy parseP4Block spaces |>> fun x -> P4Program (emptyInfo, x)
+let parseP4 x = 
+    match (run parseP4' x) with
+    | Success(res, _, _) -> res
+    | Failure(e, _, _) -> 
+        printfn "%A" e
+        P4Program (emptyInfo, [])
+
+

@@ -1,7 +1,5 @@
 ﻿module TestPass
 
-open System
-open Microsoft.VisualStudio.TestPlatform.CommunicationUtilities.Resources
 open Xunit
 open ACompilerService.Pass
 open ACompilerService.Ast
@@ -27,6 +25,19 @@ let prgList =
              (let ([a 1])
                   a)
              2)"                                     // 8
+        "(if (and (< 3 4) (>= 5 7))
+             1
+             2)"                                     // 9
+        "(if (< 1 2) 1 2)"                           // 10
+        "(if (<= 1 2) 1 2)"                          // 11
+        "(if (= 1 2) 1 2)"                           // 12
+        "(if (> 1 2) 1 2)"                           // 13
+        "(if (>= 1 2) 1 2)"                          // 14
+        "(< 1 2)"                                    // 15
+        "(<= 1 2)"                                   // 16
+        "(= 1 2)"                                    // 17
+        "(> 1 2)"                                    // 18
+        "(>= 1 2)"                                   // 19
     |]
 
 let toChecked x =
@@ -130,6 +141,17 @@ let ``Pass 1 test 5`` () =
     let res = testPass1 prg
     Assert.Equal(wanted, res)
 
+[<Fact>]
+let ``Pass 1 test 6`` () =
+    let prg = prgList.[9]
+    let wanted = 
+        P1IfExp (P1IfExp (P1OpExp (ExprOp.IL, P1Int 3L, P1Int 4L)
+                         ,P1OpExp (ExprOp.IEqB,P1Int 5L, P1Int 7L)
+                         ,P1Bool false)
+                ,P1Int 1L
+                ,P1Int 2L) |> makeRes
+    let res = testPass1 prg
+    Assert.Equal(wanted, res)
 let toPass2 x = Result.bind pass2 (toPass1 x) 
 let testPass2 x = toPass2 x
 
@@ -321,10 +343,18 @@ let ``Pass 4 test 1 `` () =
             P4BOp (InstrBOp.Add, P4Var 1, P4Reg Reg.Rax)
             P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
         ]
-    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ]) |> makeRes
+    let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ]) 
+    let p4' = parseP4 "
+        _start:
+            mov 1, (var 0)
+            mov 2, (var 1)
+            mov (var 0), rax
+            add (var 1), rax
+            jmp conclusion
+    "
+    Assert.Equal(wanted, p4')
     let res = testPass4 prg
-    printResult res
-    Assert.Equal(wanted, res)
+    Assert.Equal(wanted |> makeRes, res)
 [<Fact>]
 let ``Pass 4 test 2 `` () =
     let prg = prgList.[1]
@@ -390,7 +420,203 @@ let ``Pass 4 test 5`` () =
     let wanted = P4Program (emptyInfo, [ (startLabel, emptyP4BlockInfo, p4) ]) |> makeRes
     let res = testPass4 prg 
     Assert.Equal(wanted, res)
-    
+
+[<Fact>]
+let ``Pass 4 test 6`` () =
+    let prg = prgList.[5]
+    let wanted = parseP4 "
+    _start:
+        mov 0, (var 0)
+        test (var 0), (var 0)
+        jnz block-0
+        jmp block-1
+    block-1:
+        mov 2, rax
+        jmp conclusion
+    block-0:
+        mov 1, rax 
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 7`` () =
+    let prg = prgList.[10]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        jb block-0
+        jmp block-1
+    block-1:
+        mov 2, rax
+        jmp conclusion
+    block-0:
+        mov 1, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 8`` () =
+    let prg = prgList.[11]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        jbe block-0
+        jmp block-1
+    block-1:
+        mov 2, rax
+        jmp conclusion
+    block-0:
+        mov 1, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 9`` () =
+    let prg = prgList.[12]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        jz block-0
+        jmp block-1
+    block-1:
+        mov 2, rax
+        jmp conclusion
+    block-0:
+        mov 1, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 10`` () =
+    let prg = prgList.[13]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        jg block-0
+        jmp block-1
+    block-1:
+        mov 2, rax
+        jmp conclusion
+    block-0:
+        mov 1, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 11`` () =
+    let prg = prgList.[14]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        jge block-0
+        jmp block-1
+    block-1:
+        mov 2, rax
+        jmp conclusion
+    block-0:
+        mov 1, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 12`` () =
+    let prg = prgList.[15]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        setb rax
+        movzb rax, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 13`` () =
+    let prg = prgList.[16]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        setbe rax
+        movzb rax, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 14`` () =
+    let prg = prgList.[17]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        sete rax
+        movzb rax, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 15`` () =
+    let prg = prgList.[18]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        setg rax
+        movzb rax, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 16`` () =
+    let prg = prgList.[19]
+    let wanted = parseP4 "
+    _start:
+        cmp 1, 2
+        setge rax
+        movzb rax, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
+[<Fact>]
+let ``Pass 4 test 17`` () =
+    let prg = prgList.[9]
+    let wanted = parseP4 "
+    _start:
+        cmp 3, 4
+        jb block-2
+        jmp block-1
+    block-2:
+        cmp 5, 7
+        jge block-0
+        jmp block-1
+    block-1:
+        mov 2, rax
+        jmp conclusion
+    block-0:
+        mov 1, rax
+        jmp conclusion
+    "
+    let res = testPass4 prg
+    Assert.Equal(wanted |> makeRes, res)
+
 let regAllocSTestCase = [
     P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 0)
     P4BOp (InstrBOp.Mov, P4Int 42L, P4Var 1)
