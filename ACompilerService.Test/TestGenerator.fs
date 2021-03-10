@@ -26,9 +26,26 @@ let genGraph = gen {
     return List.fold (fun g (v1, v2) -> addEdge g v1 v2) (createGraph [||]) i
 }
 
+(*
+    no circle
+*)
+let genDGraph = gen {
+   let! n = Gen.choose (0, 5)
+   let! i = genPairGraph n
+   return List.fold (fun g (v1, v2) ->
+               if existEdge g v2 v1 then g else
+               addEdgeD g v1 v2)
+           (createGraph [||]) i
+}
+
 type GraphGenerators =
     static member Graph() =
         {new Arbitrary<Graph<int>>() with
             override x.Generator = genGraph
             override x.Shrinker t = Seq.empty}
- 
+
+type DGraphGenerators =
+    static member Graph() =
+        {new Arbitrary<Graph<int>>() with
+            override x.Generator = genDGraph
+            override x.Shrinker t = Seq.empty}

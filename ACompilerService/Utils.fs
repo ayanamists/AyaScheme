@@ -113,7 +113,9 @@ let addEdgeD (G vg) v1 v2 =
         match o with
         | Some(s) -> Some (s.Add(v2))
         | None -> Some (Set([v2]))
-    vg.Change(v1, changeV1) |> G
+    vg.Change(v1, changeV1)
+    |> (fun x -> if x.ContainsKey(v2) then x else x.Add(v2, Set []) )
+    |> G
     
 let addEdge (G vg) v1 v2 =
     addEdgeD (addEdgeD (G vg) v1 v2) v2 v1
@@ -172,7 +174,7 @@ let topoSort g =
     let mutable visit = Map [ for i in vexs -> (i, false) ]
     let mutable res = []
     let rec traverse node =
-        if visit.[node] = false then () else
+        if visit.[node] = true then () else
         visit <- visit.Change (node, (fun _ -> Some true))
         let neighbors = getNeighbor g node
         for i in neighbors do

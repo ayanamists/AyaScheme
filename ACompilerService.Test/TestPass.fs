@@ -731,6 +731,7 @@ let ``CtrFlow test 1`` () =
     let target =
         (createGraph [|
             ("_start", [|"conclusion"|])
+            ("conclusion", [||])
         |] ) |> makeRes
     Assert.Equal(target, testCtrFlow prg)
 
@@ -742,6 +743,7 @@ let ``CtrFlow test 2`` () =
             ("_start", [|"block-0"; "block-1"|])
             ("block-0", [|"conclusion"|])
             ("block-1", [|"conclusion"|])
+            ("conclusion", [||])
         |] |> makeRes
     let res = testCtrFlow prg
     Assert.Equal(target, res)
@@ -755,6 +757,7 @@ let ``CtrFlow test 3`` () =
             ("block-2", [|"block-0"; "block-1"|])
             ("block-1", [|"conclusion"|])
             ("block-0", [|"conclusion"|])
+            ("conclusion", [||])
         |] |> makeRes
     let res = testCtrFlow prg
     Assert.Equal(target, res)
