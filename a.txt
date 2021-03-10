@@ -1,12 +1,65 @@
-  æ­£åœ¨ç¡®å®šè¦è¿˜åŸçš„é¡¹ç›®â€¦
-  æ‰€æœ‰é¡¹ç›®å‡æ˜¯æœ€æ–°çš„ï¼Œæ— æ³•è¿˜åŸã€‚
-  ACompilerService -> /home/ayanamists/source/AyaScheme/ACompilerService/bin/Debug/netcoreapp5/ACompilerService.dll
-  ACompilerSerivce.Test -> /home/ayanamists/source/AyaScheme/ACompilerSerivce.Test/bin/Debug/netcoreapp5/ACompilerSerivce.Test.dll
-/home/ayanamists/source/AyaScheme/ACompilerSerivce.Test/bin/Debug/netcoreapp5/ACompilerSerivce.Test.dll çš„æµ‹è¯•è¿è¡Œ(.NETCoreApp,Version=v5.0)
-Microsoft (R) æµ‹è¯•æ‰§è¡Œå‘½ä»¤è¡Œå·¥å…·ç‰ˆæœ¬ 16.8.3
-ç‰ˆæƒæ‰€æœ‰ (C) Microsoft Corporationã€‚ä¿ç•™æ‰€æœ‰æƒåˆ©ã€‚
+  ÕıÔÚÈ·¶¨Òª»¹Ô­µÄÏîÄ¿¡­
+  ËùÓĞÏîÄ¿¾ùÊÇ×îĞÂµÄ£¬ÎŞ·¨»¹Ô­¡£
+C:\Users\MI\source\repos\AyaScheme\ACompilerService\Coloring.fs(8,6): warning FS0343: ÀàĞÍ¡°PriorityEle¡±ÏÔÊ½ÊµÏÖ "System.IComparable"£¬µ«Î´Ìá¹©Ïà¶ÔÓ¦µÄ "Object.Equals" µÄÖØĞ´¡£ÒÑ×Ô¶¯Ìá¹© "Object.Equals " µÄÊµÏÖ(Í¨¹ı "System.IComparable" ÊµÏÖ)¡£Çë¿¼ÂÇÏÔÊ½ÊµÏÖÖØĞ´ "Object.Equals" [C:\Users\MI\source\repos\AyaScheme\ACompilerService\ACompilerService.fsproj]
+C:\Users\MI\source\repos\AyaScheme\ACompilerService\Parser.fs(51,19): warning FS0025: ´Ë±í´ïÊ½ÖĞµÄÄ£Ê½Æ¥Åä²»ÍêÕû¡£ ÀıÈç£¬Öµ¡°SBool (_)¡±¿ÉÒÔÖ¸Ê¾Ä£Ê½Î´º­¸ÇµÄÓÃÀı¡£ [C:\Users\MI\source\repos\AyaScheme\ACompilerService\ACompilerService.fsproj]
+C:\Users\MI\source\repos\AyaScheme\ACompilerService\Pass.fs(196,26): warning FS0025: ´Ë±í´ïÊ½ÖĞµÄÄ£Ê½Æ¥Åä²»ÍêÕû¡£ ÀıÈç£¬Öµ¡°[_;_;_]¡±¿ÉÒÔÖ¸Ê¾Ä£Ê½Î´º­¸ÇµÄÓÃÀı¡£ [C:\Users\MI\source\repos\AyaScheme\ACompilerService\ACompilerService.fsproj]
+C:\Users\MI\source\repos\AyaScheme\ACompilerService\Pass.fs(198,26): warning FS0025: ´Ë±í´ïÊ½ÖĞµÄÄ£Ê½Æ¥Åä²»ÍêÕû¡£ ÀıÈç£¬Öµ¡°[_;_]¡±¿ÉÒÔÖ¸Ê¾Ä£Ê½Î´º­¸ÇµÄÓÃÀı¡£ [C:\Users\MI\source\repos\AyaScheme\ACompilerService\ACompilerService.fsproj]
+  ACompilerService -> C:\Users\MI\source\repos\AyaScheme\ACompilerService\bin\Debug\netcoreapp5\ACompilerService.dll
+  ACompilerService.Test -> C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\bin\Debug\netcoreapp5\ACompilerService.Test.dll
+C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\bin\Debug\netcoreapp5\ACompilerService.Test.dll µÄ²âÊÔÔËĞĞ(.NETCoreApp,Version=v5.0)
+Microsoft (R) ²âÊÔÖ´ĞĞÃüÁîĞĞ¹¤¾ß°æ±¾ 16.8.3
+°æÈ¨ËùÓĞ (C) Microsoft Corporation¡£±£ÁôËùÓĞÈ¨Àû¡£
 
-æ­£åœ¨å¯åŠ¨æµ‹è¯•æ‰§è¡Œï¼Œè¯·ç¨å€™...
-æ€»å…± 1 ä¸ªæµ‹è¯•æ–‡ä»¶ä¸æŒ‡å®šæ¨¡å¼ç›¸åŒ¹é…ã€‚
+ÕıÔÚÆô¶¯²âÊÔÖ´ĞĞ£¬ÇëÉÔºò...
+×Ü¹² 1 ¸ö²âÊÔÎÄ¼şÓëÖ¸¶¨Ä£Ê½ÏàÆ¥Åä¡£
+  Ê§°Ü TestPass.reg Alloc Test 4 [123 ms]
+  ´íÎóÏûÏ¢:
+   Assert.Equal() Failure
+Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+  ¶ÑÕ»¸ú×Ù:
+     at TestPass.reg Alloc Test 4() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 836
+  Ê§°Ü TestPass.reg Alloc Test 5 [5 ms]
+  ´íÎóÏûÏ¢:
+   Assert.Equal() Failure
+Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+  ¶ÑÕ»¸ú×Ù:
+     at TestPass.reg Alloc Test 5() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 849
+  Ê§°Ü TestPass.reg Alloc Test 6 [< 1 ms]
+  ´íÎóÏûÏ¢:
+   System.Collections.Generic.KeyNotFoundException : The given key was not present in the dictionary.
+  ¶ÑÕ»¸ú×Ù:
+     at Microsoft.FSharp.Collections.MapTreeModule.find[TKey,TValue](IComparer`1 comparer, TKey k, MapTree`2 m) in F:\workspace\_work\1\s\src\fsharp\FSharp.Core\map.fs:line 155
+   at Microsoft.FSharp.Collections.MapModule.Find[TKey,T](TKey key, FSharpMap`2 table) in F:\workspace\_work\1\s\src\fsharp\FSharp.Core\map.fs:line 778
+   at ACompilerService.Pass.createInfGraphPrg(Graph`1 ctrGraph, FSharpMap`2 instrMap) in C:\Users\MI\source\repos\AyaScheme\ACompilerService\Pass.fs:line 559
+   at ACompilerService.Pass.regAlloc[a](Pass4Out p4Prg) in C:\Users\MI\source\repos\AyaScheme\ACompilerService\Pass.fs:line 598
+   at TestPass.reg Alloc Test 6() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 854
+P5Program
+  ("",
+   [("_start", "",
+     [P5BOp (Mov, P5Int 1L, P5Reg Rax); P5BOp (Add, P5Int 2L, P5Reg Rax);
+      P5CtrOp (Jmp, "conclusion")]); ("conclusion", "", [])])
+  Ê§°Ü TestPass.reg Alloc Test 1 [25 ms]
+  ´íÎóÏûÏ¢:
+   Assert.Equal() Failure
+Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+  ¶ÑÕ»¸ú×Ù:
+     at TestPass.reg Alloc Test 1() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 794
+  Ê§°Ü TestPass.reg Alloc Test 2 [1 ms]
+  ´íÎóÏûÏ¢:
+   Assert.Equal() Failure
+Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+  ¶ÑÕ»¸ú×Ù:
+     at TestPass.reg Alloc Test 2() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 808
+  Ê§°Ü TestPass.reg Alloc Test 3 [1 ms]
+  ´íÎóÏûÏ¢:
+   Assert.Equal() Failure
+Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
+  ¶ÑÕ»¸ú×Ù:
+     at TestPass.reg Alloc Test 3() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 821
 
-å·²é€šè¿‡! - Failed:     0, Passed:    89, Skipped:     0, Total:    89, Duration: 1 s- /home/ayanamists/source/AyaScheme/ACompilerSerivce.Test/bin/Debug/netcoreapp5/ACompilerSerivce.Test.dll (net5.0)
+Ê§°Ü!  - Failed:     6, Passed:    89, Skipped:     0, Total:    95, Duration: 2 s- ACompilerService.Test.dll (net5.0)

@@ -1,5 +1,6 @@
 ﻿module TestPass
 
+open System.Reflection.Metadata
 open Xunit
 open ACompilerService.Pass
 open ACompilerService.Ast
@@ -11,6 +12,11 @@ let printResult r =
     match r with
     | Result.Ok t -> printfn "%A" t
     | Result.Error e -> printfn "%A" e
+
+let getResult res =
+    match res with
+    | Result.Ok t -> t
+    | _ -> Impossible () |> raise
 let prgList = 
     [|
         "(let ([a 1] [b 2]) (+ a b))"                // 0
@@ -650,7 +656,10 @@ let regAllocTestCaseInfGraph = createGraph [|
     (P4Var 5, [| P4Reg Reg.Rax ; P4Var 4 |])
 |]
 
-let testCreateInfGraph x = removeTemp x |> createInfGraph
+let testCreateInfGraph x = removeTemp x (Map [])
+                           |> fun (_, t) ->
+                               createInfGraph t (createGraph [||]) (Set [])
+                           |> fst
 
 [<Fact>]
 let ``Create InfGraph Test 1`` () =
@@ -664,8 +673,7 @@ let ``Create InfGraph Test 1`` () =
         (P4Var 1, [|P4Var 2|])
         (P4Var 2, [|P4Var 1|])
     |]
-    let p4' = (removeTemp p4)
-    let res = createInfGraph p4'
+    let res = testCreateInfGraph p4
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -686,7 +694,7 @@ let ``remove Temp Test 1`` () =
          P4BOp (InstrBOp.Mov, P4Var 0, P4Var 2)
          P4BOp (InstrBOp.Mov, P4Var 0, P4Var 3)
     ]
-    let res = removeTemp p4
+    let (_, res) = removeTemp p4 (Map [])
     Assert.Equal<Pass4Instr list>(res, wanted)
 
 [<Fact>]
@@ -711,13 +719,13 @@ let  ``remove Temp Test 2`` () =
         P4BOp (InstrBOp.Add, P4Int 1L, P4Reg Reg.Rax)
         P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
     ]
-    let res = removeTemp wanted
+    let (_, res) = removeTemp wanted (Map [])
     Assert.Equal<Pass4Instr list>(wanted, res)
 
 [<Fact>]
 let ``remove Temp test 3`` () =
     let wanted = regAllocTestCaseRemoveTemp
-    let res = removeTemp regAllocSTestCase
+    let (_, res) = removeTemp regAllocSTestCase (Map [])
     Assert.Equal<Pass4Instr list>(wanted, res)
         
 let testCtrFlow x = result {
@@ -762,6 +770,12 @@ let ``CtrFlow test 3`` () =
     let res = testCtrFlow prg
     Assert.Equal(target, res)
 
+let testPass4' x = testPass4 x |> getResult 
+[<Fact>]
+let ``Remove Temp Prg Test 1`` () =
+    let prg = testPass4' prgList.[5]
+    Assert.Equal(prg, removeTempPrgTest prg)
+
 let pass5 = regAlloc
 let toPass5 x = Result.bind pass5 (toPass4 x)
 let testPass5 x = toPass5 x
@@ -776,6 +790,7 @@ let ``reg Alloc Test 1`` () =
     ]
     let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
     let res = testPass5 prg
+    printResult res
     Assert.Equal(wanted, res)
     
 [<Fact>]

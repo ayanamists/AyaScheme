@@ -200,8 +200,16 @@ let mapMerge (a:Map<'a, 'b>) (b:Map<'a, 'b>) f =
         | Some v' -> Map.change k (f k (v, v')) s
         | None -> Map.add k v s) a b
 
-let mapIntersection a b =
+let mapIntersection (a:Map<'a, 'b>) (b:Map<'a,'b>) =
     Set.intersect (Set [| for KeyValue(i, j) in a -> (i, j) |])
                   (Set [| for KeyValue(i, j) in b -> (i, j) |])
     |> Set.toArray
     |> Map.ofArray
+
+let graphUnion (G g1) (G g2) =
+    let v1 = getAllVex (G g1) |> Set.ofList
+    let v2 = getAllVex (G g2) |> Set.ofList
+    let v = Set.union v1 v2 |> Set.toList
+    List.map (fun x -> (x, Set.union (Map.find x g1) (Map.find x g2))) v
+    |> Map.ofList
+    |> G

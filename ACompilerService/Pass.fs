@@ -401,7 +401,6 @@ let selectInstructions p3Prg =
             | P3UPrim (op, atm1) -> 
                 let thisCode = genFromUOp op atm1
                 handleTail tail (thisCode :: acc)
-            | _ -> Impossible () |> raise
         | P3Return (p3Exp) -> 
             let lastCode = P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
             match p3Exp with
@@ -424,7 +423,6 @@ let selectInstructions p3Prg =
                         let newTail = (handleTail t []) 
                         (l, emptyP4BlockInfo, newTail) ) blocks
         P4Program (info, newBlocks) |> Result.Ok
-    | _ -> Impossible () |> raise
 
 let pass4 = selectInstructions
 
@@ -441,6 +439,7 @@ let makeCtrFlowGraph p4Prg =
                 | InstrCtrOp.Jmp | InstrCtrOp.Jz | InstrCtrOp.Jnz
                 | InstrCtrOp.Jb  | InstrCtrOp.Jbe | InstrCtrOp.Jg | InstrCtrOp.Jge ->
                     addEdgeD g label label'
+                | _ -> Impossible () |> raise
             | _ -> g
         List.fold foldF g instrs
     match p4Prg with
@@ -453,7 +452,7 @@ let isRemovableOp op =
     | InstrBOp.Cmp -> false
     | InstrBOp.MovZb -> false
     | _ -> true
-let removeTemp (l : Pass4Instr list) =
+let removeTemp (l : Pass4Instr list) m =
     let changeMov _ atm1 = fun _ -> Some atm1
     let changeWrite _ = None
     let changeAtm m atm =
@@ -464,7 +463,7 @@ let removeTemp (l : Pass4Instr list) =
         | _ -> atm
     let rec loop l m acc =
         match l with
-        | [] -> acc |> List.rev
+        | [] -> (m, acc |> List.rev)
         | instr :: tl ->
             match instr with
             | P4BOp (InstrBOp.Mov, atm1, atm2) ->
@@ -488,19 +487,33 @@ let removeTemp (l : Pass4Instr list) =
                 let newInstr = P4UOp (op, newAtm)
                 loop tl newM (newInstr :: acc)
             | P4CtrOp _ -> loop tl m (instr :: acc)
-    loop l (Map []) [] 
+    loop l m []
 
 let removeTempPrg p4Prg =
     match p4Prg with
     | P4Program (_, blocks)->
         let ctrFlowGraph = makeCtrFlowGraph p4Prg
         let order = topoSort ctrFlowGraph
-        let instrMap = Map [ for (label, _, instrs) in  blocks -> (label, instrs)]
-        let foldF mOfM now =
-            let m' = ()
-            ()
-        ()
-let createInfGraph (l : Pass4Instr list) =
+        let instrMap = (Map [ for (label, _, instrs) in  blocks -> (label, instrs)])
+                        .Add (conclusionLabel, [])
+        let precursorMap = graphArrowReverse ctrFlowGraph
+        let foldF (mOfM, acc) now =
+            let precursors = getNeighbor precursorMap now
+            let m' = if precursors.IsEmpty then (Map []) else
+                     List.map (fun x -> Map.find x mOfM) precursors
+                     |> List.reduce mapIntersection
+            let instrNow = Map.find now instrMap
+            let (newM, instrNow') = removeTemp instrNow m'
+            (Map.add now newM mOfM, Map.add now instrNow' acc)
+        let (_, instrMap') = List.fold foldF (Map [], Map []) order
+        (ctrFlowGraph, instrMap')
+let removeTempPrgTest p4Prg =
+    match p4Prg with
+    | P4Program (info, blocks) ->
+        let (_, instrMap) = removeTempPrg p4Prg
+        P4Program (info, [ for (label, _, _) in blocks ->
+                           (label, emptyP4BlockInfo, Map.find label instrMap) ])
+let rec createInfGraph' (l : Pass4Instr list) g s =
     let handle1 instr (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) p =
         let (r, w) = p4InstrRW instr
         //printfn "read : %A, write: %A" r w
@@ -520,16 +533,32 @@ let createInfGraph (l : Pass4Instr list) =
                                  )
                              )
                             (s', g) r
-        (s'', g')
-    let rec loop l (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) =
-        let pBasic v1 v2 = not (v1 = v2)
-        match l with
-        | [] -> g
-        | [instr] -> handle1 instr g s pBasic |> snd
-        | instrNow :: tl ->
-            let (s' , g') = handle1 instrNow g s pBasic
-            loop tl g' s'
-    loop (List.rev l) (createGraph [||]) (Set [])
+        (g', s'')
+    let pBasic v1 v2 = not (v1 = v2)
+    match l with
+    | [] -> (g, s)
+    | [instr] -> handle1 instr g s pBasic 
+    | instrNow :: tl ->
+        let (g' , s') = handle1 instrNow g s pBasic
+        createInfGraph' tl g' s'
+let createInfGraph x = createInfGraph' (List.rev x)
+let createInfGraphPrg ctrGraph instrMap=
+    let order = topoSort ctrGraph |> List.rev
+    let foldF (gMap, sMap) label =
+        let instr = Map.find label instrMap
+        let successors = getNeighbor ctrGraph label
+        let reduceF (g1, s1) (g2, s2) = (graphUnion g1 g2, Set.union s1 s2)
+        let (gNow, sNow) =
+            if successors.IsEmpty then (createGraph [||], Set []) else
+            List.map (fun label' ->
+                (Map.find label' gMap, Map.find label' sMap)) successors
+            |> List.reduce reduceF
+        let (g', s') = createInfGraph instr gNow sNow
+        (Map.add label g' gMap, Map.add label s' sMap)
+    let (g, _) = List.fold foldF ((Map []), (Map [])) order
+    Map.find startLabel g
+        
+        
 let regAlloc p4Prg =
     let assignToAtm m =
       let varColorLst = [ for KeyValue(r, c) in m -> (r, c) ] 
@@ -565,9 +594,8 @@ let regAlloc p4Prg =
       fun color -> arr.[color]
     match p4Prg with
     | P4Program (info, blocks) ->
-        let (label, info', blocksForAssign) = blocks.[0]
-        let instrs = removeTemp blocksForAssign
-        let infGraph = createInfGraph instrs
+        let (ctrGraph, instrMap) = removeTempPrg p4Prg
+        let infGraph = createInfGraphPrg ctrGraph instrMap
         let assignMap = coloringGraph infGraph
         let assignManager = assignToAtm assignMap
         let mapAtm atm =
@@ -596,6 +624,9 @@ let regAlloc p4Prg =
                     (mapAtm atm1)     >>=   (fun a1 ->
                     P5UOp (op, a1) :: l )
                 | P4CtrOp (op, t) -> P5CtrOp (op, t) :: l
-        let instrs' = List.fold foldF [] instrs |> List.rev
-        P5Program(info, [ (label, info', instrs')  ]) |> Result.Ok
+        let allocList l = List.fold foldF [] l |> List.rev
+        P5Program (emptyInfo, [
+            for KeyValue(label, instr) in instrMap ->
+               (label, emptyP4BlockInfo, allocList instr) 
+        ]) |> Result.Ok
         

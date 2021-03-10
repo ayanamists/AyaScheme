@@ -5,3 +5,5 @@ obj
 *.cache
 .vs
 .vscode
+.fake
+.ionide
