@@ -1,7 +1,6 @@
 module ACompilerService.Utils
 
 open System
-open System.Xml.Schema
 open FSharpx.Collections
 
 exception VarNotBound of string
@@ -109,17 +108,15 @@ type Graph<'s when 's : comparison > = G of Map<'s, Set<'s>>
 let createGraph (seq:('T * 'T array) array) =
     Map ([ for (i, t) in seq -> (i, Set t) ]) |> G
     
-let addEdge (G vg) v1 v2 =
+let addEdgeD (G vg) v1 v2 =
     let changeV1 (o:Set<'a> option) =
         match o with
         | Some(s) -> Some (s.Add(v2))
         | None -> Some (Set([v2]))
-    let changeV2 (o:Set<'a> option) =
-        match o with
-        | Some(l) -> Some (l.Add(v1))
-        | None -> Set ([v1]) |> Some
-    let vg1 = vg.Change(v1, changeV1)
-    vg1.Change(v2, changeV2) |> G
+    vg.Change(v1, changeV1) |> G
+    
+let addEdge (G vg) v1 v2 =
+    addEdgeD (addEdgeD (G vg) v1 v2) v2 v1
 
 let addEdges g l = 
     List.fold (fun now (v1, v2) -> addEdge now v1 v2 ) g l

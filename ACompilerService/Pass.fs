@@ -431,6 +431,28 @@ let pass4 = selectInstructions
 (*
     Pass 5 : Register Allocation
 *)
+let makeCtrFlowGraph p4Prg =
+    let rec handleBlocks g (label, info, instrs) =
+        let g' = addVex g label
+        let foldF g instr =
+            match instr with
+            | P4CtrOp (op, label') ->
+                match op with
+                | InstrCtrOp.Jmp | InstrCtrOp.Jz | InstrCtrOp.Jnz
+                | InstrCtrOp.Jb  | InstrCtrOp.Jbe | InstrCtrOp.Jg | InstrCtrOp.Jge ->
+                    addEdgeD g label label'
+            | _ -> g
+        List.fold foldF g instrs
+    match p4Prg with
+    | P4Program (info, blocks) ->
+        List.fold handleBlocks (createGraph [||]) blocks 
+        
+let isRemovableOp op =
+    match op with
+    | InstrBOp.Test -> false
+    | InstrBOp.Cmp -> false
+    | InstrBOp.MovZb -> false
+    | _ -> true
 let removeTemp (l : Pass4Instr list) =
     let changeMov _ atm1 = fun _ -> Some atm1
     let changeWrite _ = None
@@ -455,7 +477,8 @@ let removeTemp (l : Pass4Instr list) =
                 let newM = List.fold (fun m x -> Map.change x changeWrite m) m w
                 let changeAtm' = changeAtm m
                 let newInstr = P4BOp (op, changeAtm' atm1, atm2)
-                loop tl newM (newInstr :: acc)
+                if isRemovableOp op then loop tl newM (newInstr :: acc)
+                else loop tl newM (instr :: acc)
             | P4UOp (op, atm1) ->
                 let (r, w) = p4InstrRW instr
                 let newM = List.fold (fun m x -> Map.change x changeWrite m) m w
@@ -559,7 +582,7 @@ let regAlloc p4Prg =
                     let p5Instr = P5BOp (op, a1, a2)
                     if isUselessP5Instr p5Instr then l else p5Instr :: l ))
                 | P4UOp (op, atm1) ->
-                    (mapAtm atm1) >>=   (fun a1 ->
+                    (mapAtm atm1)     >>=   (fun a1 ->
                     P5UOp (op, a1) :: l )
                 | P4CtrOp (op, t) -> P5CtrOp (op, t) :: l
         let instrs' = List.fold foldF [] instrs |> List.rev

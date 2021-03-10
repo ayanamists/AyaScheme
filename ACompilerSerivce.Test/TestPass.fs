@@ -664,7 +664,8 @@ let ``Create InfGraph Test 1`` () =
         (P4Var 1, [|P4Var 2|])
         (P4Var 2, [|P4Var 1|])
     |]
-    let res = createInfGraph (removeTemp p4)
+    let p4' = (removeTemp p4)
+    let res = createInfGraph p4'
     Assert.Equal(wanted, res)
 
 [<Fact>]
@@ -719,6 +720,45 @@ let ``remove Temp test 3`` () =
     let res = removeTemp regAllocSTestCase
     Assert.Equal<Pass4Instr list>(wanted, res)
         
+let testCtrFlow x = result {
+    let! res = toPass4 x
+    return (makeCtrFlowGraph res)
+}
+
+[<Fact>]
+let ``CtrFlow test 1`` () =
+    let prg = prgList.[1]
+    let target =
+        (createGraph [|
+            ("_start", [|"conclusion"|])
+        |] ) |> makeRes
+    Assert.Equal(target, testCtrFlow prg)
+
+[<Fact>]
+let ``CtrFlow test 2`` () =
+    let prg = prgList.[5]
+    let target =
+        createGraph [|
+            ("_start", [|"block-0"; "block-1"|])
+            ("block-0", [|"conclusion"|])
+            ("block-1", [|"conclusion"|])
+        |] |> makeRes
+    let res = testCtrFlow prg
+    Assert.Equal(target, res)
+
+[<Fact>]
+let ``CtrFlow test 3`` () =
+    let prg = prgList.[9]
+    let target =
+        createGraph [|
+            ("_start", [|"block-1"; "block-2"|])
+            ("block-2", [|"block-0"; "block-1"|])
+            ("block-1", [|"conclusion"|])
+            ("block-0", [|"conclusion"|])
+        |] |> makeRes
+    let res = testCtrFlow prg
+    Assert.Equal(target, res)
+
 let pass5 = regAlloc
 let toPass5 x = Result.bind pass5 (toPass4 x)
 let testPass5 x = toPass5 x

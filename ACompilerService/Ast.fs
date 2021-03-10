@@ -99,7 +99,7 @@ let getP3GotoLabel goto =
     | P3Goto l -> l
 
 (*
-    for convinet, we use
+    for convince, we use
         sete rax            (1)
     instead of
         sete al             (2)
@@ -122,12 +122,12 @@ type InstrBOp =
 | Add = 0
 | Mov = 1
 | MovZb = 2
-| Sub = 2
-| And = 3
-| Or = 4
+| Sub = 3
+| And = 4
+| Or = 5
 | Xor = 5
-| Cmp = 6
-| Test = 7
+| Cmp = 7
+| Test = 8
 
 type InstrCtrOp = 
 | Ret = 0
@@ -211,9 +211,13 @@ let p4InstrRW instr =
         | InstrUOp.Mul | InstrUOp.IMul | InstrUOp.IDiv -> (handleAtm atm, [Reg.Rax |> P4Reg])
         | InstrUOp.Push -> (handleAtm atm, [])
         | InstrUOp.Pop -> ([], handleAtm atm)
+        | InstrUOp.SetE | InstrUOp.SetBe | InstrUOp.SetGe | InstrUOp.SetG | InstrUOp.SetB ->
+            ([], handleAtm atm)
         | _ -> Impossible () |> raise
     | P4BOp (op, atm1, atm2) ->
         match op with
-        | InstrBOp.Add | InstrBOp.Sub -> (handleAtm atm1 @ handleAtm atm2, handleAtm atm2)
-        | InstrBOp.Mov -> (handleAtm atm1, handleAtm atm2)
+        | InstrBOp.Add | InstrBOp.Sub | InstrBOp.And | InstrBOp.Or | InstrBOp.Xor ->
+            (handleAtm atm1 @ handleAtm atm2, handleAtm atm2)
+        | InstrBOp.Mov | InstrBOp.MovZb -> (handleAtm atm1, handleAtm atm2)
+        | InstrBOp.Test | InstrBOp.Cmp -> (handleAtm atm1 @ handleAtm atm2, [])
         | _ -> Impossible () |> raise
