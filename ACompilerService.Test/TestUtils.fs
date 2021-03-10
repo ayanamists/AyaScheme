@@ -58,6 +58,25 @@ let ``TopoSort test 2`` () =
     |]
     Assert.True(``topoSort res is in topological order`` g)
     
+[<Fact>]
+let ``Graph Arrow Reverse Test 1`` () =
+    let g = createGraph [|
+        (1, [|2; 3; 4|])
+        (2, [|3; 4|])
+        (3, [|1; 4|])
+        (4, [|1|])
+    |]
+    let g' = createGraph [|
+        (4, [|1; 2; 3|])
+        (1, [|3; 4|])
+        (2, [|1|])
+        (3, [|2; 1|])
+    |]
+    Assert.Equal(g, graphArrowReverse g')
+    
+[<Property(Arbitrary=[|typeof<DGraphGenerators>|])>]
+let ``Reverse 2 time is not reverse`` (g:Graph<int>) =
+    g = graphArrowReverse (graphArrowReverse g)
     
 [<Property(Arbitrary=[|typeof<DGraphGenerators>|])>]
 let ``Every node exists in topoSort Res`` (g:Graph<int>) =

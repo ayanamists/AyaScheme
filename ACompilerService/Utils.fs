@@ -123,6 +123,9 @@ let addEdge (G vg) v1 v2 =
 let addEdges g l = 
     List.fold (fun now (v1, v2) -> addEdge now v1 v2 ) g l
 
+let addEdgesD g l =
+    List.fold (fun now (v1, v2) -> addEdgeD now v1 v2) g l
+
 let getNeighbor (G vg) v1 =
     let s = vg.TryFind(v1)
     match s with
@@ -183,3 +186,22 @@ let topoSort g =
     for i in vexs do
         traverse i
     res
+    
+let graphArrowReverse (G vg) =
+    if vg.Count = 0 then createGraph [||] else
+    [for KeyValue(i, j) in vg -> (i, j)]
+    |> List.map (fun (i, j) -> List.map (fun i' -> (i', i)) [ for i' in j -> i' ])
+    |> List.reduce (@)
+    |> addEdgesD (createGraph [||])
+
+let mapMerge (a:Map<'a, 'b>) (b:Map<'a, 'b>) f =
+    Map.fold (fun s k v ->
+        match Map.tryFind k s with
+        | Some v' -> Map.change k (f k (v, v')) s
+        | None -> Map.add k v s) a b
+
+let mapIntersection a b =
+    Set.intersect (Set [| for KeyValue(i, j) in a -> (i, j) |])
+                  (Set [| for KeyValue(i, j) in b -> (i, j) |])
+    |> Set.toArray
+    |> Map.ofArray

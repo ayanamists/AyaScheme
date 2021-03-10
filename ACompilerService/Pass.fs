@@ -464,7 +464,7 @@ let removeTemp (l : Pass4Instr list) =
         | _ -> atm
     let rec loop l m acc =
         match l with
-        | [] -> acc
+        | [] -> acc |> List.rev
         | instr :: tl ->
             match instr with
             | P4BOp (InstrBOp.Mov, atm1, atm2) ->
@@ -488,8 +488,18 @@ let removeTemp (l : Pass4Instr list) =
                 let newInstr = P4UOp (op, newAtm)
                 loop tl newM (newInstr :: acc)
             | P4CtrOp _ -> loop tl m (instr :: acc)
-    loop l (Map []) [] |> List.rev
+    loop l (Map []) [] 
 
+let removeTempPrg p4Prg =
+    match p4Prg with
+    | P4Program (_, blocks)->
+        let ctrFlowGraph = makeCtrFlowGraph p4Prg
+        let order = topoSort ctrFlowGraph
+        let instrMap = Map [ for (label, _, instrs) in  blocks -> (label, instrs)]
+        let foldF mOfM now =
+            let m' = ()
+            ()
+        ()
 let createInfGraph (l : Pass4Instr list) =
     let handle1 instr (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) p =
         let (r, w) = p4InstrRW instr
