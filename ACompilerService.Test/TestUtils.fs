@@ -1,7 +1,8 @@
-module ACompilerSerivce.Test.TestUtils
+module ACompilerService.Test.TestUtils
 
 open Xunit
 open ACompilerService.Utils
+open TestGenerator
 
 [<Fact>]
 let ``Graph Illegal Test 1`` () =

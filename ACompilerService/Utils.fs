@@ -166,3 +166,18 @@ let isIllegalGraph (G vg) =
 
 let isEmptyGraph (G vg) =
     Map.isEmpty vg
+    
+let topoSort g =
+    let vexs = (getAllVex g)
+    let mutable visit = Map [ for i in vexs -> (i, false) ]
+    let mutable res = []
+    let rec traverse node =
+        if visit.[node] = false then () else
+        visit <- visit.Change (node, (fun _ -> Some true))
+        let neighbors = getNeighbor g node
+        for i in neighbors do
+            traverse i
+        res <- node :: res
+    for i in vexs do
+        traverse i
+    res

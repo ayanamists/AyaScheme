@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="TestGenerator.fs" />
     <Compile Include="TestInterpreter.fs" />
     <Compile Include="TestPass.fs" />
     <Compile Include="TestParser.fs" />

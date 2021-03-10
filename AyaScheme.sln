@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30128.74
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "AyaScheme", "AyaScheme\AyaScheme.fsproj", "{4B73247C-42D7-42B8-8CDB-D893C64C8F3C}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ACompilerSerivce.Test", "ACompilerSerivce.Test\ACompilerSerivce.Test.fsproj", "{F1D684A2-9D6A-4941-9332-B5ABB5948034}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ACompilerService.Test", "ACompilerService.Test\ACompilerService.Test.fsproj", "{F1D684A2-9D6A-4941-9332-B5ABB5948034}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ACompilerService", "ACompilerService\ACompilerService.fsproj", "{85940D1A-3C0D-4311-A322-FE89D241523C}"
 EndProject
@@ -33,5 +33,7 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {074BB473-CEEB-4C06-B1D9-C8F73C14F746}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
 EndGlobal

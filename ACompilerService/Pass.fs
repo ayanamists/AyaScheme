@@ -489,6 +489,7 @@ let removeTemp (l : Pass4Instr list) =
                 loop tl newM (newInstr :: acc)
             | P4CtrOp _ -> loop tl m (instr :: acc)
     loop l (Map []) [] |> List.rev
+
 let createInfGraph (l : Pass4Instr list) =
     let handle1 instr (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) p =
         let (r, w) = p4InstrRW instr
