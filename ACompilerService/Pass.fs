@@ -498,12 +498,12 @@ let pass4ToInfGraph p4 =
     let blocks = getP4Blocks p4
     let sets = makeLiveSets p4
     createInfGraph sets blocks
-(*
+    
 let regAlloc p4Prg =
     let assignToAtm m =
       let varColorLst = [ for KeyValue(r, c) in m -> (r, c) ] 
       let max = maxColor m
-      if max = 0 then (fun color -> Impossible () |> raise) else
+      if max = 0 then fun _ -> P5Reg (enum<Reg>0) else
       let foldF l (x, c) =
           match x with
           | P4Reg r -> (c, r) :: l
@@ -534,37 +534,29 @@ let regAlloc p4Prg =
       fun color -> arr.[color]
     match p4Prg with
     | P4Program (info, blocks) ->
+        let infGraph = pass4ToInfGraph p4Prg
         let assignMap = coloringGraph infGraph
         let assignManager = assignToAtm assignMap
         let mapAtm atm =
             match atm with
-            | P4Reg r -> P5Reg r |> Some
+            | P4Reg r -> P5Reg r 
             | P4Var _ ->
                 match Map.tryFind atm assignMap with
                 | Some t ->
-                    t |> assignManager |> Some
-                | None -> None
-            | P4Int i -> P5Int i |> Some
+                    t |> assignManager 
+                | None -> 0 |> assignManager
+            | P4Int i -> P5Int i 
         let foldF l instr =
             if isUselessP4Instr instr then l
             else
-                let (>>=) m f =
-                    match m with
-                    | Some t -> (f t)
-                    | None -> l
                 match instr with
                 | P4BOp (op, atm1, atm2) ->
-                    (mapAtm atm1)     >>=   (fun a1 ->
-                    (mapAtm atm2)     >>=   (fun a2 ->
-                    let p5Instr = P5BOp (op, a1, a2)
-                    if isUselessP5Instr p5Instr then l else p5Instr :: l ))
+                    let p5Instr = P5BOp (op,mapAtm atm1, mapAtm atm2)
+                    if isUselessP5Instr p5Instr then l else p5Instr :: l 
                 | P4UOp (op, atm1) ->
-                    (mapAtm atm1)     >>=   (fun a1 ->
-                    P5UOp (op, a1) :: l )
+                    P5UOp (op, mapAtm atm1) :: l 
                 | P4CtrOp (op, t) -> P5CtrOp (op, t) :: l
         let allocList l = List.fold foldF [] l |> List.rev
-        P5Program (emptyInfo, [
-            for KeyValue(label, instr) in instrMap ->
-               (label, emptyP4BlockInfo, allocList instr) 
-        ]) |> Result.Ok
-*)
+        let newBlocks =
+            List.map (fun (label, block) -> (label, allocList block)) blocks
+        P5Program (info, newBlocks) |> Result.Ok

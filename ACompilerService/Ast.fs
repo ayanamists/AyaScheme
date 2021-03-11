@@ -179,7 +179,7 @@ type Pass5Instr =
 | P5CtrOp of InstrCtrOp * Label
 | P5UOp of InstrUOp * Pass5Atm
 | P5BOp of InstrBOp * Pass5Atm * Pass5Atm
-type Pass5Block = Label * Info *  Pass5Instr list
+type Pass5Block = Label * Pass5Instr list
 type Pass5Out = 
 | P5Program of Pass5Info * Pass5Block list
 

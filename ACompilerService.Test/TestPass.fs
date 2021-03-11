@@ -747,26 +747,25 @@ let ``Create Inf Graph Test 3`` () =
         (P4Reg Reg.Rax, [|P4Var 0; P4Var 1; P4Var 2; P4Var 3; P4Var 4|])
     |]
     Assert.Equal(g, pass4ToInfGraph prg)
-(*
+    
 let pass5 = regAlloc
 let toPass5 x = Result.bind pass5 (toPass4 x)
-let testPass5 x = toPass5 x
-
-
+let testPass5 x = toPass5 x |> getResult
 
 [<Fact>]
 let ``reg Alloc Test 1`` () =
     let prg = prgList.[0]
-    let p5 = [ 
-        P5BOp (InstrBOp.Mov, P5Int 1L, P5Reg Reg.Rax)
-        P5BOp (InstrBOp.Add, P5Int 2L, P5Reg Reg.Rax)
-        P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
-    ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
+    let p5 = parseP5 "
+    conclusion:
+    _start:
+        mov 1, rax
+        mov 2, rcx
+        add rcx, rax
+        jmp conclusion
+    " 
     let res = testPass5 prg
-    printResult res
-    Assert.Equal(wanted, res)
-    
+    Assert.Equal(p5 , res)
+(*    
 [<Fact>]
 let ``reg Alloc Test 2`` () =
     let prg = prgList.[1]

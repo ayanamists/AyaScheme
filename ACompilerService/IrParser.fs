@@ -144,5 +144,38 @@ let parseP4 x =
     | Failure(e, _, _) -> 
         printfn "%A" e
         P4Program (emptyInfo, [])
-
+        
+let parseP5Int = pint64 |>> P5Int
+let parseP5Reg = parseReg |>> P5Reg
+let parseP5Mem =
+    pstring "mem" >>. pchar '('
+    >>.spaces >>.parseReg .>> spaces .>>.
+    (pchar ',' >>.spaces >>. pint64 .>> spaces .>> pchar ')')
+    |>> fun (reg, offset) -> P5Stack (offset, reg)
+let parseP5Atm = parseP5Int <|> parseP5Reg <|> parseP5Mem
+let parseP5BOp = 
+    parseInstrBOp .>>. (spaces1 >>. parseP5Atm .>>. 
+        (spaces >>. pchar ',' >>. spaces >>. parseP5Atm))
+    |>> fun (op, (atm1, atm2)) -> P5BOp (op, atm1, atm2)
+let parseP5UOp = 
+    parseInstrUOp .>>. (spaces1 >>. parseP5Atm)
+    |>> fun (op, atm) -> P5UOp (op, atm)
+let parseP5CtrOp = 
+    parseInstrCtrOp .>>. (spaces1 >>. parseRawLabel)
+    |>> fun (op, label) -> P5CtrOp (op, label)
+let parseP5Instr = parseP5BOp <|> parseP5CtrOp <|> parseP5UOp
+let parseP5InstrSeq =  
+    sepEndBy parseP5Instr spaces
+let parseP5Block : Parser<Pass5Block, unit> = 
+    (spaces >>. (charsTillString ":" false 100) 
+        .>> spaces .>> pchar ':' .>> spaces ) 
+    .>>. parseP5InstrSeq
+let parseP5' = 
+    sepEndBy parseP5Block spaces |>> fun x -> P5Program (emptyInfo, x)
+let parseP5 x = 
+    match (run parseP5' x) with
+    | Success(res, _, _) -> res
+    | Failure(e, _, _) -> 
+        printfn "%A" e
+        P5Program (emptyInfo, [])
 
