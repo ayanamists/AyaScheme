@@ -421,8 +421,8 @@ let selectInstructions p3Prg =
     | P3Program (info, blocks) ->
         let newBlocks = List.map (fun (l, t) ->
                         let newTail = (handleTail t []) 
-                        (l, emptyP4BlockInfo, newTail) ) blocks
-        P4Program (info, newBlocks) |> Result.Ok
+                        (l,  newTail) ) blocks
+        P4Program (info, conclusionP4Block :: newBlocks) |> Result.Ok
 
 let pass4 = selectInstructions
 
@@ -430,7 +430,7 @@ let pass4 = selectInstructions
     Pass 5 : Register Allocation
 *)
 let makeCtrFlowGraph p4Prg =
-    let rec handleBlocks g (label, info, instrs) =
+    let rec handleBlocks g (label,  instrs) =
         let g' = addVex g label
         let foldF g instr =
             match instr with
@@ -441,124 +441,64 @@ let makeCtrFlowGraph p4Prg =
                     addEdgeD g label label'
                 | _ -> Impossible () |> raise
             | _ -> g
-        List.fold foldF g instrs
+        List.fold foldF g' instrs
     match p4Prg with
     | P4Program (info, blocks) ->
         List.fold handleBlocks (createGraph [||]) blocks 
         
-let isRemovableOp op =
-    match op with
-    | InstrBOp.Test -> false
-    | InstrBOp.Cmp -> false
-    | InstrBOp.MovZb -> false
-    | _ -> true
-let removeTemp (l : Pass4Instr list) m =
-    let changeMov _ atm1 = fun _ -> Some atm1
-    let changeWrite _ = None
-    let changeAtm m atm =
-        match atm with
-        | P4Var _ | P4Reg _ -> match Map.tryFind atm m with
-                               | Some t -> t
-                               |_ -> atm
-        | _ -> atm
-    let rec loop l m acc =
+let getP4Blocks p4Prg =
+    match p4Prg with
+    | P4Program (_, blocks) -> blocks
+let makeLiveSets p4Prg =
+    let ctrFlowGraph = makeCtrFlowGraph p4Prg
+    let order = topoSort ctrFlowGraph |> List.rev
+    let instrMap = Map.ofList (getP4Blocks p4Prg)
+    let rec handleBlocks acc set l =
         match l with
-        | [] -> (m, acc |> List.rev)
+        | [] -> set :: acc
         | instr :: tl ->
-            match instr with
-            | P4BOp (InstrBOp.Mov, atm1, atm2) ->
-                let newAtm1 = changeAtm m atm1
-                let newM = Map.change atm2 (changeMov atm2 newAtm1) m
-                let newInstr = P4BOp (InstrBOp.Mov, newAtm1, atm2)
-                loop tl newM (newInstr :: acc)
-            | P4BOp (op, atm1, atm2) ->
-                let (r, w) = p4InstrRW instr
-                let newM = List.fold (fun m x -> Map.change x changeWrite m) m w
-                let changeAtm' = changeAtm m
-                let newInstr = P4BOp (op, changeAtm' atm1, atm2)
-                if isRemovableOp op then loop tl newM (newInstr :: acc)
-                else loop tl newM (instr :: acc)
-            | P4UOp (op, atm1) ->
-                let (r, w) = p4InstrRW instr
-                let newM = List.fold (fun m x -> Map.change x changeWrite m) m w
-                let changeAtm' = changeAtm m
-                let newAtm = if List.exists (fun x -> x = atm1) w
-                             then atm1 else changeAtm' atm1
-                let newInstr = P4UOp (op, newAtm)
-                loop tl newM (newInstr :: acc)
-            | P4CtrOp _ -> loop tl m (instr :: acc)
-    loop l m []
+            let (r, w) = p4InstrRW instr
+            let set' = Set.union (Set.difference set (Set w)) (Set r)
+            handleBlocks (set :: acc) set' tl
+    let foldF setMap now =
+        let successors = getNeighbor ctrFlowGraph now
+        if successors.IsEmpty
+        then
+            let m = handleBlocks [] (Set []) (Map.find now instrMap |> List.rev)
+            Map.add now m setMap
+        else
+            let s = List.map (fun x -> setMap.[x] |> List.head) successors
+                    |> List.reduce Set.union
+            let instrL = Map.find now instrMap |> List.rev
+            let m = handleBlocks [] s instrL 
+            Map.add now m setMap
+    List.fold foldF (Map []) order
 
-let removeTempPrg p4Prg =
-    match p4Prg with
-    | P4Program (_, blocks)->
-        let ctrFlowGraph = makeCtrFlowGraph p4Prg
-        let order = topoSort ctrFlowGraph
-        let instrMap = (Map [ for (label, _, instrs) in  blocks -> (label, instrs)])
-                        .Add (conclusionLabel, [])
-        let precursorMap = graphArrowReverse ctrFlowGraph
-        let foldF (mOfM, acc) now =
-            let precursors = getNeighbor precursorMap now
-            let m' = if precursors.IsEmpty then (Map []) else
-                     List.map (fun x -> Map.find x mOfM) precursors
-                     |> List.reduce mapIntersection
-            let instrNow = Map.find now instrMap
-            let (newM, instrNow') = removeTemp instrNow m'
-            (Map.add now newM mOfM, Map.add now instrNow' acc)
-        let (_, instrMap') = List.fold foldF (Map [], Map []) order
-        (ctrFlowGraph, instrMap')
-let removeTempPrgTest p4Prg =
-    match p4Prg with
-    | P4Program (info, blocks) ->
-        let (_, instrMap) = removeTempPrg p4Prg
-        P4Program (info, [ for (label, _, _) in blocks ->
-                           (label, emptyP4BlockInfo, Map.find label instrMap) ])
-let rec createInfGraph' (l : Pass4Instr list) g s =
-    let handle1 instr (g:Graph<Pass4Atm>) (s:Set<Pass4Atm>) p =
-        let (r, w) = p4InstrRW instr
-        //printfn "read : %A, write: %A" r w
-        let s' = Set.difference s (Set w)
-        //printfn "s' : %A" s'
-        let (s'', g') = List.fold
-                             (fun (s, g') readV ->
-                                let g'' = addVex g' readV
-                                (
-                                     Set.add readV s, 
-                                     List.fold (fun g'' setV ->
-                                        if (p readV setV) then
-                                            //printfn "writeV : %A,setV : %A" readV setV
-                                            addEdge g'' readV setV
-                                        else g'')
-                                        g'' [for i in s -> i]
-                                 )
-                             )
-                            (s', g) r
-        (g', s'')
-    let pBasic v1 v2 = not (v1 = v2)
-    match l with
-    | [] -> (g, s)
-    | [instr] -> handle1 instr g s pBasic 
-    | instrNow :: tl ->
-        let (g' , s') = handle1 instrNow g s pBasic
-        createInfGraph' tl g' s'
-let createInfGraph x = createInfGraph' (List.rev x)
-let createInfGraphPrg ctrGraph instrMap=
-    let order = topoSort ctrGraph |> List.rev
-    let foldF (gMap, sMap) label =
-        let instr = Map.find label instrMap
-        let successors = getNeighbor ctrGraph label
-        let reduceF (g1, s1) (g2, s2) = (graphUnion g1 g2, Set.union s1 s2)
-        let (gNow, sNow) =
-            if successors.IsEmpty then (createGraph [||], Set []) else
-            List.map (fun label' ->
-                (Map.find label' gMap, Map.find label' sMap)) successors
-            |> List.reduce reduceF
-        let (g', s') = createInfGraph instr gNow sNow
-        (Map.add label g' gMap, Map.add label s' sMap)
-    let (g, _) = List.fold foldF ((Map []), (Map [])) order
-    Map.find startLabel g
-        
-        
+let createInfGraph setMap blocks =
+    let foldF0 p writeV g setV =
+        if p setV then g else addEdge g writeV setV
+    let foldF1 g (instr, set) =
+        match instr with
+        | P4BOp(InstrBOp.Mov, atm1, atm2) ->
+            List.fold (foldF0 (fun v -> v = atm1 || v = atm2) atm2) g
+                      (Set.toList set)
+        | _ ->
+            let (r, w) = p4InstrRW instr
+            match w with
+            | [] -> g
+            | [atm1] ->
+                List.fold (foldF0 (fun v -> v = atm1) atm1) g (Set.toList set)
+            | _ -> Impossible () |> raise
+    let foldF2 g (label, block) =
+        List.zip block (List.tail (Map.find label setMap))
+        |> List.fold foldF1 g
+    List.fold foldF2 (createGraph [||]) blocks
+
+let pass4ToInfGraph p4 =
+    let blocks = getP4Blocks p4
+    let sets = makeLiveSets p4
+    createInfGraph sets blocks
+(*
 let regAlloc p4Prg =
     let assignToAtm m =
       let varColorLst = [ for KeyValue(r, c) in m -> (r, c) ] 
@@ -594,8 +534,6 @@ let regAlloc p4Prg =
       fun color -> arr.[color]
     match p4Prg with
     | P4Program (info, blocks) ->
-        let (ctrGraph, instrMap) = removeTempPrg p4Prg
-        let infGraph = createInfGraphPrg ctrGraph instrMap
         let assignMap = coloringGraph infGraph
         let assignManager = assignToAtm assignMap
         let mapAtm atm =
@@ -629,4 +567,4 @@ let regAlloc p4Prg =
             for KeyValue(label, instr) in instrMap ->
                (label, emptyP4BlockInfo, allocList instr) 
         ]) |> Result.Ok
-        
+*)

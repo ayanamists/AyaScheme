@@ -135,7 +135,7 @@ let parseP4Block : Parser<Pass4Block, unit> =
     (spaces >>. (charsTillString ":" false 100) 
         .>> spaces .>> pchar ':' .>> spaces ) 
     .>>. parseP4InstrSeq
-    |>> fun (label, instrs) -> (label, emptyP4BlockInfo, instrs)
+    |>> fun (label, instrs) -> (label, instrs)
 let parseP4' = 
     sepEndBy parseP4Block spaces |>> fun x -> P4Program (emptyInfo, x)
 let parseP4 x = 

@@ -151,11 +151,11 @@ type Pass4Instr =
 | P4CtrOp of InstrCtrOp * Label
 | P4UOp of InstrUOp * Pass4Atm
 | P4BOp of InstrBOp * Pass4Atm * Pass4Atm
-type Pass4Block = Label * Info *  Pass4Instr list
+type Pass4Block = Label *  Pass4Instr list
 type Pass4Out = 
 | P4Program of Pass4Info * Pass4Block list
 
-let emptyP4BlockInfo = ""
+let conclusionP4Block = (conclusionLabel, [] )
 let isEqualP4Atm atm1 atm2 = 
     match atm1, atm2 with
     | P4Var v1, P4Var v2 -> v1 = v2

@@ -1,10 +1,7 @@
   正在确定要还原的项目…
   所有项目均是最新的，无法还原。
-C:\Users\MI\source\repos\AyaScheme\ACompilerService\Coloring.fs(8,6): warning FS0343: 类型“PriorityEle”显式实现 "System.IComparable"，但未提供相对应的 "Object.Equals" 的重写。已自动提供 "Object.Equals " 的实现(通过 "System.IComparable" 实现)。请考虑显式实现重写 "Object.Equals" [C:\Users\MI\source\repos\AyaScheme\ACompilerService\ACompilerService.fsproj]
-C:\Users\MI\source\repos\AyaScheme\ACompilerService\Parser.fs(51,19): warning FS0025: 此表达式中的模式匹配不完整。 例如，值“SBool (_)”可以指示模式未涵盖的用例。 [C:\Users\MI\source\repos\AyaScheme\ACompilerService\ACompilerService.fsproj]
-C:\Users\MI\source\repos\AyaScheme\ACompilerService\Pass.fs(196,26): warning FS0025: 此表达式中的模式匹配不完整。 例如，值“[_;_;_]”可以指示模式未涵盖的用例。 [C:\Users\MI\source\repos\AyaScheme\ACompilerService\ACompilerService.fsproj]
-C:\Users\MI\source\repos\AyaScheme\ACompilerService\Pass.fs(198,26): warning FS0025: 此表达式中的模式匹配不完整。 例如，值“[_;_]”可以指示模式未涵盖的用例。 [C:\Users\MI\source\repos\AyaScheme\ACompilerService\ACompilerService.fsproj]
   ACompilerService -> C:\Users\MI\source\repos\AyaScheme\ACompilerService\bin\Debug\netcoreapp5\ACompilerService.dll
+C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs(735,5): warning FS0058: 缩进可能不正确: 此标记位于从位置 (734:5) 开始的上下文的右侧。请尝试进一步缩进此标记，或使用标准格式设置约定。 [C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\ACompilerService.Test.fsproj]
   ACompilerService.Test -> C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\bin\Debug\netcoreapp5\ACompilerService.Test.dll
 C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\bin\Debug\netcoreapp5\ACompilerService.Test.dll 的测试运行(.NETCoreApp,Version=v5.0)
 Microsoft (R) 测试执行命令行工具版本 16.8.3
@@ -12,54 +9,5 @@ Microsoft (R) 测试执行命令行工具版本 16.8.3
 
 正在启动测试执行，请稍候...
 总共 1 个测试文件与指定模式相匹配。
-  失败 TestPass.reg Alloc Test 4 [123 ms]
-  错误消息:
-   Assert.Equal() Failure
-Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-  堆栈跟踪:
-     at TestPass.reg Alloc Test 4() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 836
-  失败 TestPass.reg Alloc Test 5 [5 ms]
-  错误消息:
-   Assert.Equal() Failure
-Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-  堆栈跟踪:
-     at TestPass.reg Alloc Test 5() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 849
-  失败 TestPass.reg Alloc Test 6 [< 1 ms]
-  错误消息:
-   System.Collections.Generic.KeyNotFoundException : The given key was not present in the dictionary.
-  堆栈跟踪:
-     at Microsoft.FSharp.Collections.MapTreeModule.find[TKey,TValue](IComparer`1 comparer, TKey k, MapTree`2 m) in F:\workspace\_work\1\s\src\fsharp\FSharp.Core\map.fs:line 155
-   at Microsoft.FSharp.Collections.MapModule.Find[TKey,T](TKey key, FSharpMap`2 table) in F:\workspace\_work\1\s\src\fsharp\FSharp.Core\map.fs:line 778
-   at ACompilerService.Pass.createInfGraphPrg(Graph`1 ctrGraph, FSharpMap`2 instrMap) in C:\Users\MI\source\repos\AyaScheme\ACompilerService\Pass.fs:line 559
-   at ACompilerService.Pass.regAlloc[a](Pass4Out p4Prg) in C:\Users\MI\source\repos\AyaScheme\ACompilerService\Pass.fs:line 598
-   at TestPass.reg Alloc Test 6() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 854
-P5Program
-  ("",
-   [("_start", "",
-     [P5BOp (Mov, P5Int 1L, P5Reg Rax); P5BOp (Add, P5Int 2L, P5Reg Rax);
-      P5CtrOp (Jmp, "conclusion")]); ("conclusion", "", [])])
-  失败 TestPass.reg Alloc Test 1 [25 ms]
-  错误消息:
-   Assert.Equal() Failure
-Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-  堆栈跟踪:
-     at TestPass.reg Alloc Test 1() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 794
-  失败 TestPass.reg Alloc Test 2 [1 ms]
-  错误消息:
-   Assert.Equal() Failure
-Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-  堆栈跟踪:
-     at TestPass.reg Alloc Test 2() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 808
-  失败 TestPass.reg Alloc Test 3 [1 ms]
-  错误消息:
-   Assert.Equal() Failure
-Expected: Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-Actual:   Microsoft.FSharp.Core.FSharpResult`2[ACompilerService.Ast+Pass5Out,ACompilerService.Pass+CompileError]
-  堆栈跟踪:
-     at TestPass.reg Alloc Test 3() in C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs:line 821
 
-失败!  - Failed:     6, Passed:    89, Skipped:     0, Total:    95, Duration: 2 s- ACompilerService.Test.dll (net5.0)
+已通过! - Failed:     0, Passed:    87, Skipped:     0, Total:    87, Duration: 1 s- ACompilerService.Test.dll (net5.0)
