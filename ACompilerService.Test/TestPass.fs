@@ -1,12 +1,14 @@
 ﻿module TestPass
 
 open System.Reflection.Metadata
+open ACompilerService
 open Xunit
 open ACompilerService.Pass
 open ACompilerService.Ast
 open ACompilerService.Parser
 open ACompilerService.Utils
 open ACompilerService.IrParser
+open ACompilerService.Coloring
 
 let printResult r =
     match r with
@@ -414,7 +416,7 @@ let ``Pass 4 test 4 `` () =
         add 3, (var 1)
         mov (var 1), rax
         idiv 4
-        jmp conclusion
+        jmp conclusion 
     "
     let res = testPass4 prg 
     Assert.Equal(wanted, res)
@@ -748,6 +750,7 @@ let ``Create Inf Graph Test 3`` () =
     |]
     Assert.Equal(g, pass4ToInfGraph prg)
     
+    
 let pass5 = regAlloc
 let toPass5 x = Result.bind pass5 (toPass4 x)
 let testPass5 x = toPass5 x |> getResult
@@ -765,49 +768,43 @@ let ``reg Alloc Test 1`` () =
     " 
     let res = testPass5 prg
     Assert.Equal(p5 , res)
-(*    
+    
 [<Fact>]
 let ``reg Alloc Test 2`` () =
     let prg = prgList.[1]
-    let p5 = 
-        [ 
-            P5BOp (InstrBOp.Mov, P5Int 1L, P5Reg Reg.Rax)
-            P5BOp (InstrBOp.Add, P5Int 3L, P5Reg Reg.Rax)
-            P5UOp (InstrUOp.IDiv, P5Int 4L )
-            P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
-        ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
-    let res = testPass5 prg
-    Assert.Equal(wanted, res)
+    let wanted = parseP5 "
+    conclusion:
+    _start:
+        mov 1, rax
+        add 3, rax
+        idiv 4
+        jmp conclusion
+    "
+    Assert.Equal(wanted, testPass5 prg)
     
 
 [<Fact>]
 let ``reg Alloc Test 3`` () =
-    let prg = prgList.[2]
-    let p5 = 
-         [ 
-             P5BOp (InstrBOp.Mov, P5Int 2L, P5Reg Reg.Rax)
-             P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
-         ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
+    let prg = prgList.[3]
+    let p5 = parseP5 "
+    conclusion:
+    _start:
+        mov 1, rax
+        sub 10, rax
+        add 3, rax
+        idiv 4
+        jmp conclusion
+    "
     let res = testPass5 prg
-    Assert.Equal(wanted, res)
+    Assert.Equal(p5, res)
     
 [<Fact>]
 let ``reg Alloc Test 4`` () =
-    let prg = prgList.[3]
-    let p5 =
-         [ 
-             P5BOp (InstrBOp.Mov, P5Int 1L, P5Reg Reg.Rax)
-             P5BOp (InstrBOp.Sub, P5Int 10L, P5Reg Reg.Rax)
-             P5BOp (InstrBOp.Add, P5Int 3L, P5Reg Reg.Rax)
-             P5UOp (InstrUOp.IDiv, P5Int 4L)
-             P5CtrOp (InstrCtrOp.Jmp, conclusionLabel)
-         ]
-    let wanted = P5Program (emptyInfo , [ (startLabel, emptyInfo, p5) ]) |> makeRes
-    let res = testPass5 prg
-    Assert.Equal(wanted, res)
+    let prg = regAllocTestCase1
+    let res = pass5 prg |> getResult
+    Assert.True
     
+(*
 [<Fact>]
 let ``reg Alloc Test 5`` () =
     let prg = prgList.[4]
