@@ -8,7 +8,7 @@ open ACompilerService.Ast
 open ACompilerService.Parser
 open ACompilerService.Utils
 open ACompilerService.IrParser
-open ACompilerService.Coloring
+open ACompilerService.Asm
 
 let printResult r =
     match r with
@@ -466,7 +466,7 @@ let ``Pass 4 test 7`` () =
     conclusion:
     _start:
         cmp 1, 2
-        jb block-0
+        jg block-0
         jmp block-1
     block-1:
         mov 2, rax
@@ -485,7 +485,7 @@ let ``Pass 4 test 8`` () =
     conclusion:
     _start:
         cmp 1, 2
-        jbe block-0
+        jge block-0
         jmp block-1
     block-1:
         mov 2, rax
@@ -523,7 +523,7 @@ let ``Pass 4 test 10`` () =
     conclusion:
     _start:
         cmp 1, 2
-        jg block-0
+        jb block-0
         jmp block-1
     block-1:
         mov 2, rax
@@ -542,7 +542,7 @@ let ``Pass 4 test 11`` () =
     conclusion:
     _start:
         cmp 1, 2
-        jge block-0
+        jbe block-0
         jmp block-1
     block-1:
         mov 2, rax
@@ -561,7 +561,7 @@ let ``Pass 4 test 12`` () =
     conclusion:
     _start:
         cmp 1, 2
-        setb rax
+        setg rax
         movzb rax, rax
         jmp conclusion
     "
@@ -575,7 +575,7 @@ let ``Pass 4 test 13`` () =
     conclusion:
     _start:
         cmp 1, 2
-        setbe rax
+        setge rax
         movzb rax, rax
         jmp conclusion
     "
@@ -603,7 +603,7 @@ let ``Pass 4 test 15`` () =
     conclusion:
     _start:
         cmp 1, 2
-        setg rax
+        setb rax
         movzb rax, rax
         jmp conclusion
     "
@@ -617,7 +617,7 @@ let ``Pass 4 test 16`` () =
     conclusion:
     _start:
         cmp 1, 2
-        setge rax
+        setbe rax
         movzb rax, rax
         jmp conclusion
     "
@@ -631,11 +631,11 @@ let ``Pass 4 test 17`` () =
     conclusion:
     _start:
         cmp 3, 4
-        jb block-2
+        jg block-2
         jmp block-1
     block-2:
         cmp 5, 7
-        jge block-0
+        jbe block-0
         jmp block-1
     block-1:
         mov 2, rax
@@ -866,3 +866,17 @@ let ``patchInstr test 3`` () =
         jmp block-1
     "
     Assert.Equal(wanted, testPass6 prg)
+    
+let pass6 = patchInstructions
+let toPass6 x = result {
+    let! x' = toPass5 x
+    let! x'' = pass6 x'
+    return! addConclusion x''
+}
+let testPass6' x = toPass6 x |> getResult
+[<Fact>]
+let ``Asm test 1`` () =
+    let prg = prgList.[10]
+    let res = assemble (testPass6' prg)
+    let asmStr = printAsm res
+    Assert.True

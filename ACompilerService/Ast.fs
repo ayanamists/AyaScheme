@@ -125,7 +125,7 @@ type InstrBOp =
 | Sub = 3
 | And = 4
 | Or = 5
-| Xor = 5
+| Xor = 6
 | Cmp = 7
 | Test = 8
 

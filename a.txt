@@ -1,13 +1,12 @@
-  ÕıÔÚÈ·¶¨Òª»¹Ô­µÄÏîÄ¿¡­
-  ËùÓĞÏîÄ¿¾ùÊÇ×îĞÂµÄ£¬ÎŞ·¨»¹Ô­¡£
-  ACompilerService -> C:\Users\MI\source\repos\AyaScheme\ACompilerService\bin\Debug\netcoreapp5\ACompilerService.dll
-C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\TestPass.fs(737,5): warning FS0058: Ëõ½ø¿ÉÄÜ²»ÕıÈ·: ´Ë±ê¼ÇÎ»ÓÚ´ÓÎ»ÖÃ (736:5) ¿ªÊ¼µÄÉÏÏÂÎÄµÄÓÒ²à¡£Çë³¢ÊÔ½øÒ»²½Ëõ½ø´Ë±ê¼Ç£¬»òÊ¹ÓÃ±ê×¼¸ñÊ½ÉèÖÃÔ¼¶¨¡£ [C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\ACompilerService.Test.fsproj]
-  ACompilerService.Test -> C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\bin\Debug\netcoreapp5\ACompilerService.Test.dll
-C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\bin\Debug\netcoreapp5\ACompilerService.Test.dll µÄ²âÊÔÔËĞĞ(.NETCoreApp,Version=v5.0)
-Microsoft (R) ²âÊÔÖ´ĞĞÃüÁîĞĞ¹¤¾ß°æ±¾ 16.8.3
-°æÈ¨ËùÓĞ (C) Microsoft Corporation¡£±£ÁôËùÓĞÈ¨Àû¡£
+  æ­£åœ¨ç¡®å®šè¦è¿˜åŸçš„é¡¹ç›®â€¦
+  æ‰€æœ‰é¡¹ç›®å‡æ˜¯æœ€æ–°çš„ï¼Œæ— æ³•è¿˜åŸã€‚
+  ACompilerService -> /home/ayanamists/source/AyaScheme/ACompilerService/bin/Debug/netcoreapp5/ACompilerService.dll
+  ACompilerService.Test -> /home/ayanamists/source/AyaScheme/ACompilerService.Test/bin/Debug/netcoreapp5/ACompilerService.Test.dll
+/home/ayanamists/source/AyaScheme/ACompilerService.Test/bin/Debug/netcoreapp5/ACompilerService.Test.dll çš„æµ‹è¯•è¿è¡Œ(.NETCoreApp,Version=v5.0)
+Microsoft (R) æµ‹è¯•æ‰§è¡Œå‘½ä»¤è¡Œå·¥å…·ç‰ˆæœ¬ 16.8.3
+ç‰ˆæƒæ‰€æœ‰ (C) Microsoft Corporationã€‚ä¿ç•™æ‰€æœ‰æƒåˆ©ã€‚
 
-ÕıÔÚÆô¶¯²âÊÔÖ´ĞĞ£¬ÇëÉÔºò...
-×Ü¹² 1 ¸ö²âÊÔÎÄ¼şÓëÖ¸¶¨Ä£Ê½ÏàÆ¥Åä¡£
+æ­£åœ¨å¯åŠ¨æµ‹è¯•æ‰§è¡Œï¼Œè¯·ç¨å€™...
+æ€»å…± 1 ä¸ªæµ‹è¯•æ–‡ä»¶ä¸æŒ‡å®šæ¨¡å¼ç›¸åŒ¹é…ã€‚
 
-ÒÑÍ¨¹ı! - Failed:     0, Passed:    91, Skipped:     0, Total:    91, Duration: 2 s- ACompilerService.Test.dll (net5.0)
+å·²é€šè¿‡! - Failed:     0, Passed:    95, Skipped:     0, Total:    95, Duration: 1 s- /home/ayanamists/source/AyaScheme/ACompilerService.Test/bin/Debug/netcoreapp5/ACompilerService.Test.dll (net5.0)

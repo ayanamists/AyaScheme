@@ -348,10 +348,10 @@ let genFromBPrim op atm1 atm2 leftAtm =
         | ExprOp.And -> commOp InstrBOp.And newAtm1 newAtm2
         | ExprOp.Or -> commOp InstrBOp.Or newAtm1 newAtm2
         | ExprOp.IEq -> cmpOp InstrUOp.SetE newAtm1 newAtm2
-        | ExprOp.IB -> cmpOp InstrUOp.SetG newAtm1 newAtm2
-        | ExprOp.IL -> cmpOp InstrUOp.SetB newAtm1 newAtm2
-        | ExprOp.IEqB -> cmpOp InstrUOp.SetGe newAtm1 newAtm2
-        | ExprOp.IEqL -> cmpOp InstrUOp.SetBe newAtm1 newAtm2
+        | ExprOp.IB -> cmpOp InstrUOp.SetB newAtm1 newAtm2
+        | ExprOp.IL -> cmpOp InstrUOp.SetG newAtm1 newAtm2
+        | ExprOp.IEqB -> cmpOp InstrUOp.SetBe newAtm1 newAtm2
+        | ExprOp.IEqL -> cmpOp InstrUOp.SetGe newAtm1 newAtm2
         | _ -> Impossible () |> raise
     let target = target
     (List.filter (fun x -> isUselessP4Instr x |> not) target)
@@ -359,10 +359,10 @@ let genFromBPrim op atm1 atm2 leftAtm =
 let makeJmpByOp op = 
     match op with
     | ExprOp.Eq | ExprOp.IEq -> (InstrCtrOp.Jz, InstrCtrOp.Jmp)
-    | ExprOp.IEqB -> (InstrCtrOp.Jge, InstrCtrOp.Jmp)
-    | ExprOp.IB -> (InstrCtrOp.Jg, InstrCtrOp.Jmp)
-    | ExprOp.IL -> (InstrCtrOp.Jb, InstrCtrOp.Jmp)
-    | ExprOp.IEqL -> (InstrCtrOp.Jbe, InstrCtrOp.Jmp)
+    | ExprOp.IEqB -> (InstrCtrOp.Jbe, InstrCtrOp.Jmp)
+    | ExprOp.IB -> (InstrCtrOp.Jb, InstrCtrOp.Jmp)
+    | ExprOp.IL -> (InstrCtrOp.Jg, InstrCtrOp.Jmp)
+    | ExprOp.IEqL -> (InstrCtrOp.Jge, InstrCtrOp.Jmp)
     | _ -> Impossible () |> raise
 let rec genFromIfExpr cond ifTrue ifFalse =
     let trueLabel = getP3GotoLabel ifTrue
@@ -384,7 +384,7 @@ let rec genFromIfExpr cond ifTrue ifFalse =
     | _ -> Impossible () |> raise
 let genFromUOp op atm1 = 
     match op with
-    | ExprUOp.Not -> P4BOp (InstrBOp.Xor, P4Int 0xffffffffffffffL, p3AtmToP4Atm atm1)
+    | ExprUOp.Not -> P4BOp (InstrBOp.Xor, P4Int 0x1L, p3AtmToP4Atm atm1)
     | _ -> Impossible () |> raise
 
 let selectInstructions p3Prg = 
@@ -439,7 +439,7 @@ let makeCtrFlowGraph p4Prg =
                 | InstrCtrOp.Jmp | InstrCtrOp.Jz | InstrCtrOp.Jnz
                 | InstrCtrOp.Jb  | InstrCtrOp.Jbe | InstrCtrOp.Jg | InstrCtrOp.Jge ->
                     addEdgeD g label label'
-                | _ -> Impossible () |> raise
+                | _ -> g 
             | _ -> g
         List.fold foldF g' instrs
     match p4Prg with
@@ -572,8 +572,8 @@ let isInt32 x =
     (int64)Int32.MaxValue >= x  && x >= (int64)Int32.MinValue
     
 
-let rec patchBop bOp =
-    match bOp with
+let rec patchInstr instr =
+    match instr with
     | P5BOp (op, atm1, atm2) -> 
         match atm1, atm2 with
         | P5Stack (r1, off1), P5Stack (r2, off2) ->
@@ -586,28 +586,48 @@ let rec patchBop bOp =
                 P5BOp (InstrBOp.Mov, atm2, P5Reg patchReg)
                 P5BOp (op, atm1, P5Reg patchReg)
             ]
-            |> List.map patchBop |> List.reduce (@)
+            |> List.map patchInstr |> List.reduce (@)
         | P5Int i, atm2 ->
-            if isInt32 i then [ bOp ]
+            if isInt32 i then [ instr ]
             else
-                match op with
-                | InstrBOp.Mov -> [ bOp ]
+                match op, atm2 with
+                | InstrBOp.Mov, (P5Reg _) -> [ instr ]
                 | _ ->
                     [
                         P5BOp (InstrBOp.Mov, P5Int i, P5Reg patchReg2)
                         P5BOp (op, P5Reg patchReg2, atm2)
                     ]
         | _ , P5Int _ -> Impossible () |> raise
-        | _, _ -> [ P5BOp (op, atm1, atm2) ]
-    | _ -> Impossible () |> raise
-let patchInstructions p5Prg =
-    let patchInstr instr =
-        match instr with
-        | P5BOp (op, atm1, atm2) -> patchBop instr
+        | P5Reg r, P5Stack (off1, r1) ->
+            match op with
+            | InstrBOp.MovZb ->
+                [
+                    P5BOp (InstrBOp.MovZb, atm1, P5Reg patchReg)
+                    P5BOp (InstrBOp.Mov, P5Reg patchReg, atm2)
+                ]
+            | _ -> [ instr ]
+        | _, _ -> [ instr ]
+    | P5UOp (op, atm1) ->
+        match atm1 with
+        | P5Int i ->
+            [
+                P5BOp (InstrBOp.Mov, P5Int i, P5Reg patchReg)
+                P5UOp (op, P5Reg patchReg)
+            ]
         | _ -> [ instr ]
+    | P5CtrOp _ -> [ instr ]
+
+let conclusionBlock = ("conclusion", [ P5CtrOp (InstrCtrOp.Ret, "") ])
+let patchInstructions p5Prg =
     match p5Prg with
     | P5Program (info, blocks) ->
        (info, List.map (fun (label, instrL) ->
-                        (label, List.map patchInstr instrL |> List.reduce (@))
+                        (label, List.map patchInstr instrL
+                                |> fun l -> if l.IsEmpty then [] else List.reduce (@) l)
                        ) blocks)
        |> P5Program |> Result.Ok
+       
+let addConclusion p6Prg =
+    match p6Prg with
+    | P5Program (info, blocks) ->
+        P5Program (info, conclusionBlock :: blocks.Tail) |> Result.Ok
