@@ -818,3 +818,34 @@ let ``reg Alloc Test 5`` () =
     let res = testPass5 prg
     Assert.Equal(wanted, res)
 *)
+
+let testPass6 x = patchInstructions x |> getResult
+[<Fact>]
+let ``patchInstr test 1`` () =
+    let prg = parseP5 "
+    _start:
+        add mem(rbp, -8), mem(rbp, -16)
+    "
+    let wanted = parseP5 "
+    _start:
+        mov mem(rbp, -8), r8
+        add r8, mem(rbp, -16)
+    "
+    Assert.Equal(wanted, testPass6 prg)
+    
+[<Fact>]
+let ``patchInstr test 2`` () =
+    let prg = parseP5 "
+    _start:
+        cmp 1, 2
+        jz block-0
+        jmp block-1
+    "
+    let wanted = parseP5 "
+    _start:
+        mov 2, r8
+        cmp 1, r8
+        jz block-0
+        jmp block-1
+    "
+    Assert.Equal(wanted, testPass6 prg)
