@@ -566,25 +566,44 @@ let regAlloc p4Prg =
 *)
 
 let patchReg = Reg.R8
+let patchReg2 = Reg.R9
 
-let patchBop op atm1 atm2 =
-    match atm1, atm2 with
-    | P5Stack (r1, off1), P5Stack (r2, off2) ->
-        [
-            P5BOp (InstrBOp.Mov, atm1, P5Reg patchReg)
-            P5BOp (op, P5Reg patchReg, atm2)
-        ]
-    | P5Int _, P5Int _ ->
-        [
-            P5BOp (InstrBOp.Mov, atm2, P5Reg patchReg)
-            P5BOp (op, atm1, P5Reg patchReg)
-        ]
-    | _ , P5Int _ -> Impossible () |> raise
-    | _, _ -> [ P5BOp (op, atm1, atm2) ]
+let isInt32 x =
+    (int64)Int32.MaxValue >= x  && x >= (int64)Int32.MinValue
+    
+
+let rec patchBop bOp =
+    match bOp with
+    | P5BOp (op, atm1, atm2) -> 
+        match atm1, atm2 with
+        | P5Stack (r1, off1), P5Stack (r2, off2) ->
+            [
+                P5BOp (InstrBOp.Mov, atm1, P5Reg patchReg)
+                P5BOp (op, P5Reg patchReg, atm2)
+            ]
+        | P5Int _, P5Int _ ->
+            [
+                P5BOp (InstrBOp.Mov, atm2, P5Reg patchReg)
+                P5BOp (op, atm1, P5Reg patchReg)
+            ]
+            |> List.map patchBop |> List.reduce (@)
+        | P5Int i, atm2 ->
+            if isInt32 i then [ bOp ]
+            else
+                match op with
+                | InstrBOp.Mov -> [ bOp ]
+                | _ ->
+                    [
+                        P5BOp (InstrBOp.Mov, P5Int i, P5Reg patchReg2)
+                        P5BOp (op, P5Reg patchReg2, atm2)
+                    ]
+        | _ , P5Int _ -> Impossible () |> raise
+        | _, _ -> [ P5BOp (op, atm1, atm2) ]
+    | _ -> Impossible () |> raise
 let patchInstructions p5Prg =
     let patchInstr instr =
         match instr with
-        | P5BOp (op, atm1, atm2) -> patchBop op atm1 atm2
+        | P5BOp (op, atm1, atm2) -> patchBop instr
         | _ -> [ instr ]
     match p5Prg with
     | P5Program (info, blocks) ->

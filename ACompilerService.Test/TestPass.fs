@@ -733,8 +733,7 @@ let ``create Inf Graph Test 1`` () =
 [<Fact>]
 let ``Create Inf Graph Test 2`` () =
     let prg = prgList.[5]
-    let g = createGraph [|
-    |]
+    let g = createGraph [||]
     Assert.Equal(g, testCreateInfGraph prg)
 
 [<Fact>]
@@ -845,6 +844,24 @@ let ``patchInstr test 2`` () =
     _start:
         mov 2, r8
         cmp 1, r8
+        jz block-0
+        jmp block-1
+    "
+    Assert.Equal(wanted, testPass6 prg)
+    
+[<Fact>]
+let ``patchInstr test 3`` () =
+    let prg = parseP5 "
+    _start:
+        cmp 11111111111111, 10000000000000
+        jz block-0
+        jmp block-1
+    "
+    let wanted = parseP5 "
+    _start:
+        mov 10000000000000, r8
+        mov 11111111111111, r9
+        cmp r9, r8
         jz block-0
         jmp block-1
     "
