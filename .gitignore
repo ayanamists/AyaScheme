@@ -7,3 +7,6 @@ obj
 .vscode
 .fake
 .ionide
+.idea
+*.out
+*.o
