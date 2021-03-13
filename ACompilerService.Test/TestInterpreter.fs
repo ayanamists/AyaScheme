@@ -3,10 +3,11 @@
 open ACompilerService.Parser
 open ACompilerService.Ast
 open ACompilerService.Interpreter
+open ACompilerService.Utils
 open Xunit
 open System
 
-let parseAndEval code = parseToAst code |> eval
+let parseAndEval code = parseToAst code |> getResult  |> eval
 
 [<Fact>]
 let ``Interpreter test 1`` () = 

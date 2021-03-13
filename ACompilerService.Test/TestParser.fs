@@ -4,6 +4,7 @@ open System
 open Xunit
 open ACompilerService.Parser
 open ACompilerService.Ast
+open ACompilerService.Utils
 
 let testFunc data wanted = 
    match wanted , (parse data) with
@@ -60,64 +61,55 @@ let ``test 7`` () =
 
 [<Fact>]
 let ``post parser test 1`` () = 
-   try
        let res = parseToAst "(let \n ((x 10) (y 20)) (+ x y))"
-       Assert.Equal(
-           LetExp ([("x", (Int 10L)); ("y", (Int 20L))],(OpExp (ExprOp.Add, (Id "x"), (Id "y")))),
-           res
-       )
-   with 
-   | _ -> Assert.True(false)
+       match res with
+       | Ok t ->
+           Assert.Equal(
+               LetExp ([("x", (Int 10L)); ("y", (Int 20L))],(OpExp (ExprOp.Add, (Id "x"), (Id "y")))),
+               t
+           )
+       | Error r -> Assert.True(false)
 
 [<Fact>]
 let ``post parser test 2`` () = 
-    try 
         let res = parseToAst "(let (let []))"
-        Assert.True(false)
-    with 
-    | :? ExcepOfExpToAst -> Assert.True(false)
-    | _ -> Assert.True(true)
+        match res with
+        | Error (SyntaxError e) -> Assert.True(true)
+        | _ -> Assert.True(false)
 
 [<Fact>]
 let ``post parser test 3`` () =
-    try 
         let res = parseToAst "(let \n ((x 10) (y (- 10 20)) (z 30)) (+ x y z))"
-        Assert.Equal(
-            LetExp ([("x", Int 10L); ("y", OpExp (ExprOp.Sub, Int 10L, Int 20L)); 
-                     ("z", Int 30L)], 
-                    (OpExp (ExprOp.Add, Id "x", (OpExp (ExprOp.Add , Id "y", Id "z"))))),
-            res
-        )
-    with 
-    | _ -> Assert.True(false)
+        match res with
+        | Ok t -> 
+            Assert.Equal(
+                LetExp ([("x", Int 10L); ("y", OpExp (ExprOp.Sub, Int 10L, Int 20L)); 
+                         ("z", Int 30L)], 
+                        (OpExp (ExprOp.Add, Id "x", (OpExp (ExprOp.Add , Id "y", Id "z"))))),
+                t
+            )
+        | _ -> Assert.True(false)
 
 [<Fact>]
 let ``post parser test 4`` () =
-    try
-        let res = parseToAst "(let \n [(x 20) (y (let {[t 20]} t))] (/ x y))"
+        let res = parseToAst "(let \n [(x 20) (y (let {[t 20]} t))] (/ x y))" |> getResult
         Assert.Equal(
             LetExp ([("x", Int 20L); ("y", LetExp ([("t", Int 20L)], Id "t"))], 
                 OpExp (ExprOp.Div, Id "x", Id "y")),
             res
         )
-    with 
-    | _ -> Assert.True(false)
     
 [<Fact>]
 let ``post parser test 5`` () =
-    try
-            let res = parseToAst "(if (>= 1 2) 1 2)"
+            let res = parseToAst "(if (>= 1 2) 1 2)" |> getResult
             Assert.Equal(
                 IfExp (OpExp (ExprOp.IEqB, Int 1L, Int 2L), Int 1L, Int 2L), 
                 res
             )
-    with 
-    | _ -> Assert.True(false)
 
 [<Fact>]
 let ``post parser test 6`` () =
-   try
-       let res = parseToAst "(if (not (and (>= 1 2) (or (< 1 2) (= 1 2)))) 1 2)"
+       let res = parseToAst "(if (not (and (>= 1 2) (or (< 1 2) (= 1 2)))) 1 2)" |> getResult
        Assert.Equal(
            IfExp (
                UOpExp (ExprUOp.Not,
@@ -130,9 +122,3 @@ let ``post parser test 6`` () =
                Int 2L),
            res
        )
-   with
-   | ExcepOfExpToAst t ->
-       printfn "%A" t
-       Assert.True(false)
-   | t -> printfn "%A" t
-          Assert.True(false)

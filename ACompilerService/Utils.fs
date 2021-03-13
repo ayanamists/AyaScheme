@@ -3,9 +3,14 @@ module ACompilerService.Utils
 open System
 open FSharpx.Collections
 
+
 exception VarNotBound of string
 exception Impossible of unit
 
+let getResult res =
+    match res with
+    | Result.Ok t -> t
+    | _ -> Impossible () |> raise
 type CompileError =
     | TypeError of string
     | VarNotBoundError of string

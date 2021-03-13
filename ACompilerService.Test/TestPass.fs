@@ -49,9 +49,9 @@ let prgList =
     |]
 
 let toChecked x =
-    let x' = parseToAst x
     renewCompileState ()
     result {
+        let! x' = parseToAst x
         let! x'' = lexicalAddress x'
         let! x''' = typeCheck x''
         return x''' |> snd
@@ -98,7 +98,7 @@ let ``typeCheck Test 6`` () =
  
 let toPass1 x =
     renewCompileState ()
-    parseToAst x |> pass1
+    Result.bind pass1 (parseToAst x) 
 let testPass1 x = toPass1 x
 let makeRes x = Result.Ok x
 [<Fact>]
