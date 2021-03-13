@@ -364,6 +364,7 @@ let ``Pass 4 test 2 `` () =
             mov (var 0), (var 1)
             add 3, (var 1)
             mov (var 1), rax
+            cqto rdx
             idiv 4
             jmp conclusion
             
@@ -395,17 +396,6 @@ let ``Pass 4 test 3 `` () =
 [<Fact>]
 let ``Pass 4 test 4 `` () =
     let prg = prgList.[3]
-    let p4 =
-        [ 
-            P4BOp (InstrBOp.Mov, P4Int 1L, P4Var 0)
-            P4BOp (InstrBOp.Mov, P4Var 0, P4Var 2)
-            P4BOp (InstrBOp.Sub, P4Int 10L, P4Var 2)
-            P4BOp (InstrBOp.Mov, P4Var 2, P4Var 1)
-            P4BOp (InstrBOp.Add, P4Int 3L, P4Var 1)
-            P4BOp (InstrBOp.Mov, P4Var 1, P4Reg Reg.Rax)
-            P4UOp (InstrUOp.IDiv, P4Int 4L)
-            P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
-        ]
     let wanted = parseP4 "
     conclusion:
     _start:
@@ -415,6 +405,7 @@ let ``Pass 4 test 4 `` () =
         mov (var 2), (var 1)
         add 3, (var 1)
         mov (var 1), rax
+        cqto rdx
         idiv 4
         jmp conclusion 
     "
@@ -427,11 +418,9 @@ let ``Pass 4 test 5`` () =
     let wanted = parseP4 "
     conclusion:
     _start:
-        mov rax, (var 1)
         mov 10, rax
         imul 1
         mov rax, (var 0)
-        mov (var 1), rax
         mov (var 0), rax
         add 1, rax
         jmp conclusion
@@ -776,6 +765,7 @@ let ``reg Alloc Test 2`` () =
     _start:
         mov 1, rax
         add 3, rax
+        cqto rdx
         idiv 4
         jmp conclusion
     "
@@ -791,6 +781,7 @@ let ``reg Alloc Test 3`` () =
         mov 1, rax
         sub 10, rax
         add 3, rax
+        cqto rdx
         idiv 4
         jmp conclusion
     "
@@ -870,13 +861,25 @@ let ``patchInstr test 3`` () =
 let pass6 = patchInstructions
 let toPass6 x = result {
     let! x' = toPass5 x
-    let! x'' = pass6 x'
-    return! addConclusion x''
+    return! pass6 x'
 }
 let testPass6' x = toPass6 x |> getResult
 [<Fact>]
 let ``Asm test 1`` () =
     let prg = prgList.[10]
     let res = assemble (testPass6' prg)
+    let asmStr = printAsm res
+    Assert.True
+    
+[<Fact>]
+let ``Asm test 2`` () =
+    let prg =
+        parseP5'' "
+          conclusion:
+          _start:
+          mov -1, mem(rbp, -8)
+          mov mem(rbp, -8), rax
+          jmp conclusion " {stackSize = 8}
+    let res = assemble prg
     let asmStr = printAsm res
     Assert.True

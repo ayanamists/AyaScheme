@@ -10,52 +10,69 @@ namespace ACompilerLoader
     public class Loader
     {
         [DllImport("libc.so.6")]
-        private static extern int getpid();
-        [DllImport("libc.so.6")]
-        private static extern unsafe void* 
+        private static extern unsafe void*
             mmap(void* addr, uint length, int prot, int flags,
-                 int fd, int offset);
+                int fd, int offset);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate Int64 SomeFunc();
 
-        private Assembler asm;
-        public Loader(Assembler asm)
+        private IntPtr p;
+        private uint realSize;
+
+        public Loader()
         {
-            this.asm = asm;
-            
+            allocMem(stdSize);
+            realSize = stdSize;
         }
 
-        public UInt64 Load()
+        private const uint stdSize = 100000;
+
+        private void allocMem(uint size)
+        {
+            IntPtr t;
+            unsafe
+            {
+                var p = mmap(null, size, 4 | 1 | 2, 0x20 | 0x02, -1, 0);
+                if ((Int64) p == -1)
+                {
+                    throw new Exception("allocate fail!"); 
+                }
+                t = new IntPtr(p);
+            }
+
+            p = t;
+            realSize = size;
+        }
+        public void Load(Assembler asm) 
         {
             var codeStream = new MemoryStream();
             unsafe
             {
-                void* p = mmap(null, 1024, 4 | 1 | 2, 0x20 | 0x02, -1, 0);
-                if ((Int64) p == -1)
+                var uIntPtr = new UIntPtr(p.ToPointer());
+                asm.Assemble(new StreamCodeWriter(codeStream), uIntPtr.ToUInt64());
+                if (codeStream.Length > realSize)
                 {
-                    throw new Exception("allocate fail!");
-                }
-                else
-                {
-                    var uIntPtr = new UIntPtr(p);
-                    var ptr = new IntPtr(p);
-                    byte* pchar = (byte*) p;
+                    allocMem((uint)codeStream.Length + 1024);
+                    codeStream.Flush();
+                    uIntPtr = new UIntPtr(p.ToPointer());
                     asm.Assemble(new StreamCodeWriter(codeStream), uIntPtr.ToUInt64());
-                    BinaryReader r = new BinaryReader(codeStream);
-                    byte[] arr = new byte[20];
-                    codeStream.Position = 0;
-                    while (codeStream.Position < codeStream.Length)
-                    {
-                        *pchar = r.ReadByte();
-                        pchar = pchar + 1;
-                    }
-                    var f = Marshal.GetDelegateForFunctionPointer<SomeFunc>(ptr);
-                    var res = f();
-                    Console.WriteLine(res);
-                    return 0;
+                }
+                byte* pchar = (byte*) p.ToPointer();
+                BinaryReader r = new BinaryReader(codeStream);
+                codeStream.Position = 0;
+                while (codeStream.Position < codeStream.Length)
+                {
+                    *pchar = r.ReadByte();
+                    pchar = pchar + 1;
                 }
             }
+        }
+
+        public Int64 Exec()
+        {
+            var f = Marshal.GetDelegateForFunctionPointer<SomeFunc>(p);
+            return f();
         }
     }
 }

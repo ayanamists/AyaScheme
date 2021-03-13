@@ -317,19 +317,18 @@ let genFromBPrim op atm1 atm2 leftAtm =
     let newAtm2 = p3AtmToP4Atm atm2
     let simpleOp op a1 a2 = [ P4BOp (InstrBOp.Mov, a1, leftAtm)
                               P4BOp (op, a2, leftAtm)] 
-    let multOrDiv op a1 a2 = 
-        if isReg leftAtm Reg.Rax
-        then 
-            [P4BOp (InstrBOp.Mov, a1, leftAtm)
-             P4UOp (op, a2)] 
-        else
-                let tempVar = genSym () |> P4Var
-                [ 
-                   P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, tempVar )
-                   P4BOp (InstrBOp.Mov, a1, P4Reg (Reg.Rax))
-                   P4UOp (op, a2)
-                   P4BOp (InstrBOp.Mov, P4Reg (Reg.Rax), leftAtm)
-                   P4BOp (InstrBOp.Mov, tempVar, P4Reg Reg.Rax) ]
+    let mult a1 a2 = 
+        [ 
+           P4BOp (InstrBOp.Mov, a1, P4Reg (Reg.Rax))
+           P4UOp (InstrUOp.IMul, a2)
+           P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, leftAtm ) ]
+    let div a1 a2 =
+        [
+            P4BOp (InstrBOp.Mov, a1, P4Reg (Reg.Rax))
+            P4UOp (InstrUOp.Cqto, P4Reg (Reg.Rdx))
+            P4UOp (InstrUOp.IDiv, a2)
+            P4BOp (InstrBOp.Mov, P4Reg Reg.Rax, leftAtm)
+        ]
     let commOp op atm1 atm2 =
         match atm1, atm2 with
         | P4Int _, P4Var _ -> simpleOp op atm2 atm1
@@ -343,8 +342,8 @@ let genFromBPrim op atm1 atm2 leftAtm =
         match op with
         | ExprOp.Add -> commOp InstrBOp.Add newAtm1 newAtm2
         | ExprOp.Sub -> simpleOp InstrBOp.Sub newAtm1 newAtm2
-        | ExprOp.Mult -> multOrDiv InstrUOp.IMul newAtm1 newAtm2
-        | ExprOp.Div -> multOrDiv InstrUOp.IDiv newAtm1 newAtm2
+        | ExprOp.Mult -> mult newAtm1 newAtm2
+        | ExprOp.Div -> div newAtm1 newAtm2
         | ExprOp.And -> commOp InstrBOp.And newAtm1 newAtm2
         | ExprOp.Or -> commOp InstrBOp.Or newAtm1 newAtm2
         | ExprOp.IEq -> cmpOp InstrUOp.SetE newAtm1 newAtm2
@@ -488,6 +487,10 @@ let createInfGraph setMap blocks =
             | [] -> g
             | [atm1] ->
                 List.fold (foldF0 (fun v -> v = atm1) atm1) g (Set.toList set)
+            | [atm1; atm2] ->
+                let g' = addEdge g atm1 atm2
+                let g'' = List.fold (foldF0 (fun v -> v = atm1) atm1) g' (Set.toList set)
+                List.fold (foldF0 (fun v -> v = atm1) atm1) g'' (Set.toList set)
             | _ -> Impossible () |> raise
     let foldF2 g (label, block) =
         List.zip block (List.tail (Map.find label setMap))
@@ -500,6 +503,7 @@ let pass4ToInfGraph p4 =
     createInfGraph sets blocks
     
 let regAlloc p4Prg =
+    let mutable maxStack = 0
     let assignToAtm m =
       let varColorLst = [ for KeyValue(r, c) in m -> (r, c) ] 
       let max = maxColor m
@@ -526,6 +530,7 @@ let regAlloc p4Prg =
                   | [] ->
                       let offset = -8L * (int64)(color - regCount + 1)
                       arr.[color] <- (offset, Reg.Rbp) |> P5Stack
+                      maxStack <- (-(int32)offset)
                       makeMapping tl regL arr
                   | hd :: tl' ->
                       arr.[color] <- hd |> P5Reg
@@ -559,7 +564,9 @@ let regAlloc p4Prg =
         let allocList l = List.fold foldF [] l |> List.rev
         let newBlocks =
             List.map (fun (label, block) -> (label, allocList block)) blocks
-        P5Program (info, newBlocks) |> Result.Ok
+        P5Program ({ stackSize = maxStack }, newBlocks) |> Result.Ok
+
+let pass5 = regAlloc
         
 (*
     Pass 6: patch instructions
@@ -581,7 +588,7 @@ let rec patchInstr instr =
                 P5BOp (InstrBOp.Mov, atm1, P5Reg patchReg)
                 P5BOp (op, P5Reg patchReg, atm2)
             ]
-        | P5Int _, P5Int _ ->
+        | _, P5Int _ ->
             [
                 P5BOp (InstrBOp.Mov, atm2, P5Reg patchReg)
                 P5BOp (op, atm1, P5Reg patchReg)
@@ -597,7 +604,6 @@ let rec patchInstr instr =
                         P5BOp (InstrBOp.Mov, P5Int i, P5Reg patchReg2)
                         P5BOp (op, P5Reg patchReg2, atm2)
                     ]
-        | _ , P5Int _ -> Impossible () |> raise
         | P5Reg r, P5Stack (off1, r1) ->
             match op with
             | InstrBOp.MovZb ->
@@ -627,7 +633,4 @@ let patchInstructions p5Prg =
                        ) blocks)
        |> P5Program |> Result.Ok
        
-let addConclusion p6Prg =
-    match p6Prg with
-    | P5Program (info, blocks) ->
-        P5Program (info, conclusionBlock :: blocks.Tail) |> Result.Ok
+let pass6 = patchInstructions

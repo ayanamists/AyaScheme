@@ -13,6 +13,7 @@
     <Compile Include="Interpreter.fs" />
     <Compile Include="IrParser.fs" />
     <Compile Include="Asm.fs" />
+    <Compile Include="Compile.fs" />
   </ItemGroup>
 
   <ItemGroup>

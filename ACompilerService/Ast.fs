@@ -64,7 +64,7 @@ type Pass2Out =
 let P2IntAtm x = P2Int x |> P2Atm
 let P2VarAtm x = P2Var x |> P2Atm
 
-type Info = string
+type Info = { stackSize:int }
 type Label = string
 
 type Pass3Info = Info
@@ -88,7 +88,7 @@ type Pass3Tail =
 type Pass3Block = Pass3Label * Pass3Tail  
 type Pass3Out = 
 | P3Program of Pass3Info * Pass3Block list
-let emptyInfo = ""
+let emptyInfo = { stackSize = 0 };
 let startLabel = "_start"
 let conclusionLabel = "conclusion"
 let p3IntAtm i = P3Int i |> P3Atm
@@ -116,6 +116,7 @@ type InstrUOp =
 | IDiv = 6
 | Push = 7
 | Pop = 8
+| Cqto = 14
 | SetE = 9 | SetGe = 10 | SetG = 11 | SetB = 12 | SetBe = 13
 
 type InstrBOp =
@@ -208,11 +209,13 @@ let p4InstrRW instr =
     | P4UOp (op, atm) ->
         match op with
         | InstrUOp.Neg -> (handleAtm atm, handleAtm atm)
-        | InstrUOp.Mul | InstrUOp.IMul | InstrUOp.IDiv -> (handleAtm atm, [Reg.Rax |> P4Reg])
+        | InstrUOp.Mul | InstrUOp.IMul | InstrUOp.IDiv ->
+            (handleAtm atm @ [Reg.Rax |> P4Reg], [Reg.Rax |> P4Reg; Reg.Rdx |> P4Reg])
         | InstrUOp.Push -> (handleAtm atm, [])
         | InstrUOp.Pop -> ([], handleAtm atm)
         | InstrUOp.SetE | InstrUOp.SetBe | InstrUOp.SetGe | InstrUOp.SetG | InstrUOp.SetB ->
             ([], handleAtm atm)
+        | InstrUOp.Cqto -> ([], [P4Reg Reg.Rdx])
         | _ -> Impossible () |> raise
     | P4BOp (op, atm1, atm2) ->
         match op with

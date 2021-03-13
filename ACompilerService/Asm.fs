@@ -1,6 +1,7 @@
 module ACompilerService.Asm
 
 open System.IO
+open Iced.Intel
 open Utils
 open Iced.Intel
 open Ast
@@ -130,6 +131,7 @@ let ucase2 (assembler:Assembler) op (r:AssemblerRegister64) =
     | InstrUOp.SetGe -> assembler.setge(AssemblerRegisters.al)
     | InstrUOp.SetBe -> assembler.setle(AssemblerRegisters.al)
     | InstrUOp.SetE -> assembler.sete(AssemblerRegisters.al)
+    | InstrUOp.Cqto -> assembler.cqo()
     | _ -> Impossible () |> raise
 
 let ucase3 (assembler:Assembler) op (r:AssemblerMemoryOperand) =
@@ -143,6 +145,7 @@ let ucase3 (assembler:Assembler) op (r:AssemblerMemoryOperand) =
      | InstrUOp.SetGe -> assembler.setge(AssemblerRegisters.al)
      | InstrUOp.SetBe -> assembler.setle(AssemblerRegisters.al)
      | InstrUOp.SetE -> assembler.sete(AssemblerRegisters.al)
+     | InstrUOp.Cqto -> assembler.cqo()
      | _ -> Impossible () |> raise
 
 let assembleUOpInstr (assembler:Assembler) op atm1 =
@@ -170,13 +173,30 @@ let makeLabelMap (assembler:Assembler) labels =
         let l' = assembler.CreateLabel(l)
         Map.add l l' m) (Map []) labels
     
+let addBeginAndConclusion (assembler:Assembler) stackSize
+                          (m:Map<Label, Iced.Intel.Label>) =
+    if stackSize = 0
+    then
+        assembler.jmp(m.[startLabel])
+        assembler.Label(ref m.[conclusionLabel])
+        assembler.ret()
+    else
+        assembler.push(AssemblerRegisters.rbp)
+        assembler.mov(AssemblerRegisters.rbp, AssemblerRegisters.rsp)
+        assembler.sub(AssemblerRegisters.rsp, stackSize)
+        assembler.jmp(m.[startLabel])
+        assembler.Label(ref m.[conclusionLabel])
+        assembler.add(AssemblerRegisters.rsp, stackSize)
+        assembler.pop(AssemblerRegisters.rbp)
+        assembler.ret()
 let assemble p5Prg =
     match p5Prg with
     | P5Program (info, blocks) ->
         let assembler = Assembler(64)
         let labels = [ for (l, b) in blocks -> l]
         let m = makeLabelMap assembler labels
-        for (label, instrL) in blocks do
+        addBeginAndConclusion assembler (info.stackSize) m
+        for (label, instrL) in blocks.Tail do
             assembler.Label(ref (m.[label]))
             for instr in instrL do
                 match instr with

@@ -112,6 +112,7 @@ let parseInstrUOp : Parser<InstrUOp, unit> =
     <|> (pstring "pop" >>% InstrUOp.Pop) <|> (pstring "sete" >>% InstrUOp.SetE)
     <|> (pstring "setge" >>% InstrUOp.SetGe) <|> (pstring "setbe" >>% InstrUOp.SetBe)
     <|> (pstring "setg" >>% InstrUOp.SetG) <|> (pstring "setb" >>% InstrUOp.SetB)
+    <|> (pstring "cqto" >>% InstrUOp.Cqto)
 let parseInstrCtrOp : Parser<InstrCtrOp, unit> = 
     (pstring "jmp" >>% InstrCtrOp.Jmp) <|> (pstring "call" >>% InstrCtrOp.Call)
     <|> (pstring "ret" >>% InstrCtrOp.Ret) <|> (pstring "jz" >>% InstrCtrOp.Jz)
@@ -170,12 +171,14 @@ let parseP5Block : Parser<Pass5Block, unit> =
     (spaces >>. (charsTillString ":" false 100) 
         .>> spaces .>> pchar ':' .>> spaces ) 
     .>>. parseP5InstrSeq
-let parseP5' = 
-    sepEndBy parseP5Block spaces |>> fun x -> P5Program (emptyInfo, x)
-let parseP5 x = 
-    match (run parseP5' x) with
+let parseP5' info = 
+    sepEndBy parseP5Block spaces |>> fun x -> P5Program (info, x)
+let parseP5'' x info = 
+    match (run (parseP5' info) x) with
     | Success(res, _, _) -> res
     | Failure(e, _, _) -> 
         printfn "%A" e
-        P5Program (emptyInfo, [])
+        P5Program (info, [])
+
+let parseP5 x =  parseP5'' x emptyInfo
 

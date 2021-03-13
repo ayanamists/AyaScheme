@@ -3,12 +3,30 @@
 open System
 open Iced.Intel
 open ACompilerLoader
+open ACompilerService.Compile
+open ACompilerService.Asm
 
+let run prg =
+    let asm = strToBin prg
+    match asm with
+    | Ok (a, t) ->
+        printAsm a |> printfn "%A"
+        let loader = Loader()
+        loader.Load(a)
+        let t = (loader.Exec ())
+        printfn "%A" t
+    | Error e -> 
+        printfn "%A" e
+
+let rec loop () =
+    Console.Write("> ")
+    let str = Console.ReadLine()
+    run str
+    loop ()
+    
 [<EntryPoint>]
 let main _ =
-    let a = Assembler(64)
-    a.mov(AssemblerRegisters.rax, 1000000L)
-    a.ret()
-    let t = Loader(a)
-    t.Load() |> ignore
-    0 // return an integer exit code
+    loop ()
+    0
+    
+    
