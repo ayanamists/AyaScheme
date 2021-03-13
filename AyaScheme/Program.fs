@@ -7,7 +7,7 @@ open ACompilerService.Compile
 open ACompilerService.Asm
 
 let run prg =
-    let asm = strToBin prg
+    let asm = compileToBin prg
     match asm with
     | Ok (a, t) ->
         printAsm a |> printfn "%A"
@@ -21,8 +21,12 @@ let run prg =
 let rec loop () =
     Console.Write("> ")
     let str = Console.ReadLine()
-    run str
-    loop ()
+    if str = null
+    then
+        Console.WriteLine("goodbye")
+    else
+        run str
+        loop ()
     
 [<EntryPoint>]
 let main _ =

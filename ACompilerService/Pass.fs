@@ -12,9 +12,6 @@ open Coloring
 *)
 type ExprValueType = IntType = 0 | BoolType = 1
 
-type CompileError =
-    | TypeError of string
-    | VarNotBoundError of string
 
 let rec transformP1If cond =
     match cond with

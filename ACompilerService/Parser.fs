@@ -2,6 +2,7 @@
 
 open FParsec
 open ACompilerService.Ast
+open ACompilerService.Utils
 
 type SExpression = 
 | SId of string
@@ -34,19 +35,16 @@ do pIdsRef := many1Till (pAll .>> spaces) pRPair
 let parse str = 
     match (run pAll str) with
     | Success(res, _, _) -> Result.Ok res
-    | Failure(errorMsg, _, _) -> Result.Error errorMsg
-
-exception ExcepOfExpToAst of string
-exception NotSExp of string
+    | Failure(errorMsg, _, _) -> Result.Error (SyntaxError errorMsg)
 
 let rec sExpToAst sexp = 
     match sexp with
-    | SId id -> Id id
-    | SBool t -> Bool t
-    | SInt inner -> Int inner
+    | SId id -> Id id |> Result.Ok
+    | SBool t -> Bool t |> Result.Ok
+    | SInt inner -> Int inner |> Result.Ok
     | SExp sl -> 
         match sl with
-        | [] -> ExcepOfExpToAst ("Impossible") |> raise
+        | [] -> Result.Error (SyntaxError "empty s-expression")
         | hd :: tl -> 
             match hd with
             | SId id -> 
@@ -66,39 +64,66 @@ let rec sExpToAst sexp =
                 | "or" -> handleBOp1 ExprOp.Or tl
                 | "if" -> ifToAst tl
                 | "not" -> handleUOp ExprUOp.Not tl
-                | _ -> ExcepOfExpToAst ("Not Implement") |> raise
-            | SInt _ -> (ExcepOfExpToAst "Int should not be called") |> raise
-            | SExp _ -> ExcepOfExpToAst ("Not Implement") |> raise 
+                | _ -> SyntaxError (sprintf "%A Not Implemented" id) |> Result.Error
+            | SInt _ -> SyntaxError ("Int should not be applied") |> Result.Error
+            | SExp _ -> SyntaxError (sprintf "%A Not Implemented" hd) |> Result.Error
 and letToAst lsexp = 
     match lsexp with
     | (SExp sl) :: [ expr ] ->
-        ( ( List.map ( fun x ->
-            match x with
-            | SExp (SId x :: [ y ]) -> (x, sExpToAst y) 
-            | _ -> ExcepOfExpToAst ("Syntax error") |> raise) sl ), 
-          sExpToAst expr ) |> LetExp
-    | _ -> ExcepOfExpToAst ("Syntax error") |> raise
+        let rec handleSL l =
+            match l with
+            | [] -> [] |> Result.Ok
+            | (SExp [SId id; t]) :: tl -> result {
+                let! tl' = handleSL tl
+                let! t' = sExpToAst t
+                return (id, t') :: tl' }
+            | _ -> SyntaxError ("Illegal Let Expr") |> Result.Error
+        result {
+           let! sl' = handleSL sl
+           let! expr' = sExpToAst expr
+           return LetExp (sl', expr')
+        }
+    | _ -> SyntaxError ("Illegal Let Expr") |> Result.Error
 and ifToAst lsexp =
     match lsexp with
-    | expr1 :: expr2 :: [ expr3 ] -> IfExp (sExpToAst expr1, sExpToAst expr2, sExpToAst expr3)
-    | _ -> ExcepOfExpToAst ("Syntax error") |> raise
+    | expr1 :: expr2 :: [ expr3 ] -> result {
+        let! expr1' = sExpToAst expr1
+        let! expr2' = sExpToAst expr2
+        let! expr3' = sExpToAst expr3
+        return IfExp(expr1', expr2', expr3')
+        }
+    | _ -> SyntaxError ("Illegal If Expr") |> Result.Error
 and handleUOp op lsexp =
     match lsexp with
-    | [expr1] -> UOpExp (op, sExpToAst expr1)
-    | _ -> ExcepOfExpToAst ("Syntax error") |> raise
+    | [expr1] -> result {
+        let! expr1' = sExpToAst expr1
+        return UOpExp(op, expr1')
+        }
+    | _ -> SyntaxError ("Illegal UOp Expr ") |> Result.Error
 and handleBOp1 op lsexp = 
     match lsexp with
-    | hd1 :: [ hd2 ] -> OpExp (op, sExpToAst hd1, sExpToAst hd2)
+    | hd1 :: [ hd2 ] -> result {
+        let! hd1' = sExpToAst hd1
+        let! hd2' = sExpToAst hd2
+        return OpExp(op, hd1', hd2')
+        }
     | hd1 :: hd2 :: tl -> 
-        let Sop = SId (printOp op) in
-        OpExp (op, sExpToAst hd1, SExp (Sop :: hd2 :: tl) |> sExpToAst)
-    | _ -> ExcepOfExpToAst ("Syntax error") |> raise
+        result {
+            let! hd1' = sExpToAst hd1
+            let! tl = handleBOp1 op (hd2 :: tl)
+            return OpExp(op, hd1', tl)
+        }
+    | _ -> SyntaxError (sprintf "Illegal %A Expr" op) |> Result.Error
 and handleBOp2 op lsexp = 
     match lsexp with
-    | hd1 :: [ hd2 ] -> OpExp (op, sExpToAst hd1, sExpToAst hd2) 
-    | _ -> ExcepOfExpToAst ("Syntax error") |> raise
-
-let parseToAst code = 
-    match parse code with
-    | Result.Ok res -> sExpToAst res
-    | Result.Error err -> NotSExp err |> raise 
+    | hd1 :: [ hd2 ] -> result {
+                                let! hd1' = sExpToAst hd1
+                                let! hd2' = sExpToAst hd2
+                                return OpExp(op, hd1', hd2')
+                                }
+    | _ -> SyntaxError (sprintf "Illegal %A Expr" op) |> Result.Error
+let parseToAst code =
+    result{
+        let! code' = parse code
+        return! sExpToAst code'
+    }

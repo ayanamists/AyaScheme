@@ -6,7 +6,8 @@ open Pass
 open Parser
 open Asm
 let compile x = result {
-    let! x1 = lexicalAddress x
+    let! x' = parseToAst x
+    let! x1 = lexicalAddress x'
     let! (x1', t) = typeCheck x1
     let! x2 = pass2 x1'
     let! x3 = pass3 x2
@@ -19,9 +20,4 @@ let compile x = result {
 let compileToBin x = result {
     let! (x', t) =  compile x
     return (assemble x', t)
-}
-
-let strToBin x = result {
-    let x = parseToAst x
-    return! (compileToBin x)
 }

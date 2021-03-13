@@ -6,6 +6,11 @@ open FSharpx.Collections
 exception VarNotBound of string
 exception Impossible of unit
 
+type CompileError =
+    | TypeError of string
+    | VarNotBoundError of string
+    | SyntaxError of string
+    
 type Index = int
 type CompileState =  { mutable newVarIdx: Index;
                        mutable blockIds: Index; }
