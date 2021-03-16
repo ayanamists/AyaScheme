@@ -64,9 +64,14 @@ let rec sExpToAst sexp =
                 | "or" -> handleBOp1 ExprOp.Or tl
                 | "if" -> ifToAst tl
                 | "not" -> handleUOp ExprUOp.Not tl
+                | "vector-length" -> handleUOp ExprUOp.VecLen tl
+                | "vector-ref" -> handleVecRef tl
+                | "vector-set!" -> handleVecSet tl
+                | "vector" -> handleVec tl
                 | _ -> SyntaxError (sprintf "%A Not Implemented" id) |> Result.Error
             | SInt _ -> SyntaxError ("Int should not be applied") |> Result.Error
-            | SExp _ -> SyntaxError (sprintf "%A Not Implemented" hd) |> Result.Error
+            | SBool _ -> SyntaxError ("Int should not be applied") |> Result.Error
+            | _ -> SyntaxError (sprintf "%A Not Implemented" hd) |> Result.Error
 and letToAst lsexp = 
     match lsexp with
     | (SExp sl) :: [ expr ] ->
@@ -122,6 +127,20 @@ and handleBOp2 op lsexp =
                                 return OpExp(op, hd1', hd2')
                                 }
     | _ -> SyntaxError (sprintf "Illegal %A Expr" op) |> Result.Error
+and handleVecRef lsexp =
+    match lsexp with
+    | exp1 :: [ exp2 ] -> result2 sExpToAst exp1 sExpToAst exp2 (fun x y -> VectorRef (x, y))
+    | _ -> SyntaxError "Illegal vector-ref Expr" |> Result.Error
+and handleVecSet lsexp =
+    match lsexp with
+    | exp1 :: exp2 :: [ exp3 ] -> result3' sExpToAst exp1 exp2 exp3
+                                      (fun x y z -> VectorSet (x, y, z))
+    | _ -> SyntaxError "Illegal vector-set! Expr" |> Result.Error
+and handleVec lsexp =
+    result {
+        let! l = resultMap sExpToAst lsexp
+        return (l |> Vector)
+    }
 let parseToAst code =
     result{
         let! code' = parse code

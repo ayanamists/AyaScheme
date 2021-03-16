@@ -16,6 +16,7 @@ type ExprOp =
 
 type ExprUOp =
 | Not = 0
+| VecLen = 1
 let printOp (op:ExprOp) = 
     match op with
     | ExprOp.Add -> "+"
@@ -40,6 +41,9 @@ type Expr =
 | IfExp of Expr * Expr * Expr
 | OpExp of ExprOp * Expr * Expr
 | UOpExp of ExprUOp * Expr
+| VectorRef of Expr * Expr
+| VectorSet of Expr * Expr * Expr
+| Vector of Expr list
 
 type Pass1Out = 
 | P1Int of int64

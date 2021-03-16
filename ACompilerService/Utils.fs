@@ -112,6 +112,40 @@ type ResultBuilder() =
         __.Using(sequence.GetEnumerator(), fun enum -> __.While(enum.MoveNext, __.Delay(fun () -> body enum.Current)))
 
 let result = new ResultBuilder()
+let result1 (eval1:'a->Result<'b,'c>) exp1 f = result {
+    let! exp1' = eval1 exp1
+    return (f exp1')
+}
+
+let result2 (eval1:'a->Result<'b,'c>) exp1
+            (eval2:'d->Result<'b,'c>) exp2 f = result {
+    let! exp1' = eval1 exp1
+    let! exp2' = eval2 exp2
+    return (f exp1' exp2')
+}
+
+let result3 (eval1:'a->Result<'b,'c>) exp1
+            (eval2:'d->Result<'b,'c>) exp2
+            (eval3:'e->Result<'b,'c>) exp3 f = result {
+                let! exp1' = eval1 exp1
+                let! exp2' = eval2 exp2
+                let! exp3' = eval3 exp3
+                return (f exp1' exp2' exp3')
+            }
+            
+let result2' (eval1:'a->Result<'b,'c>) exp1  exp2 f = result2 eval1 exp1 eval1 exp2 f
+let result3' eval1 exp1 exp2 exp3 f = result3 eval1 exp1 eval1 exp2 eval1 exp3 f
+ 
+let resultMap (f:'a->Result<'b,'c>) l =
+    let rec build l acc =
+        match l with
+        | [] -> acc |> List.rev |> Result.Ok
+        | hd :: tl ->
+            result {
+               let! hd' = f hd
+               return! build tl (hd' :: acc)
+            }
+    build l []
     
 type Graph<'s when 's : comparison > = G of Map<'s, Set<'s>>
 

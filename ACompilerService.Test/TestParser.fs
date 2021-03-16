@@ -122,3 +122,31 @@ let ``post parser test 6`` () =
                Int 2L),
            res
        )
+       
+[<Fact>]
+let ``post parser test 7`` () =
+    let res = parseToAst "(vector 1 2 3 4)" |> getResult
+    Assert.Equal(
+        Vector [ (Int 1L); (Int 2L) ;(Int 3L); (Int 4L) ], res
+        )
+    
+[<Fact>]
+let ``post parser test 8`` () =
+    let res = parseToAst "(vector-length (vector 1 2 3 4))" |> getResult
+    Assert.Equal(
+        UOpExp(ExprUOp.VecLen, Vector [ (Int 1L); (Int 2L) ;(Int 3L); (Int 4L) ]), res
+        )
+    
+[<Fact>]
+let ``post parser test 9`` () =
+    let res = parseToAst "(vector-ref (vector 1 2 3 4) 1)" |> getResult
+    Assert.Equal(
+        VectorRef(Vector [ (Int 1L); (Int 2L) ;(Int 3L); (Int 4L) ], (Int 1L)), res
+        )
+
+[<Fact>]
+let ``post parser test 10`` () =
+    let res = parseToAst "(vector-set! (vector 1 2 3 4) 1 10)" |> getResult
+    Assert.Equal(
+        VectorSet(Vector [ (Int 1L); (Int 2L) ;(Int 3L); (Int 4L) ], (Int 1L), (Int 10L)), res
+        )
