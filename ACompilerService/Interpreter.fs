@@ -1,5 +1,6 @@
 ﻿module ACompilerService.Interpreter
 
+open System
 open Ast
 open FSharp.Collections
 
@@ -8,6 +9,7 @@ type BlockEnv = Map<Identifier, Value>
 type Env = Map<Identifier, Value> list
 
 exception TypeError of string
+exception VecOutOfLength of string
 let getIntValue value = 
     match value with
     | IntValue v -> v
@@ -18,6 +20,11 @@ let getBoolValue value =
     | BoolValue b -> b
     | _ -> TypeError (sprintf "%A should be Bool" value) |> raise
     
+let getVecValue value =
+    match value with
+    | VecValue v -> v
+    | _ -> TypeError (sprintf "%A should be Vec" value) |> raise
+    
 exception ShouldNotBeCalled of string
 
 let rec searchEnv (env:Env) var =
@@ -25,6 +32,12 @@ let rec searchEnv (env:Env) var =
     | hd :: tl -> if hd.ContainsKey(var) then hd.[var] |> Ok else searchEnv tl var
     | [] -> Error ()
     
+    
+let testVecIdx v idx =
+    if idx < Array.length v then ()
+    else
+        VecOutOfLength (sprintf "%A out of length of %A" idx v) |> raise
+        
 let evalBinaryExpr v1 v2
                    (valueGetter1: Value->'a) (valueGetter2: Value->'a)
                    (f: 'a->'a->Value) =
@@ -88,5 +101,20 @@ let rec evalWithEnv exp env =
             if v1
             then evalWithEnv ifTrue env
             else evalWithEnv ifFalse env
+        | Expr.Vector l ->
+            let l' = List.map (fun x -> evalWithEnv x env) l
+            VecValue [| for i in l' -> i |]
+        | Expr.VectorRef (v, idx) ->
+            let v' = evalWithEnv v env |> getVecValue
+            let idx' = evalWithEnv idx env |> getIntValue |> int32
+            testVecIdx v' idx'
+            v'.[idx']
+        | Expr.VectorSet (v, idx, value) ->
+            let v' = evalWithEnv v env |> getVecValue
+            let idx' = evalWithEnv idx env |> getIntValue |> int32
+            testVecIdx v' idx'
+            let value' = evalWithEnv value env
+            v'.[idx'] <- value'
+            VoidValue ()
 
 let eval exp = evalWithEnv exp []

@@ -5,6 +5,8 @@ open Utils
 type Value = 
 | IntValue of int64
 | BoolValue of bool
+| VecValue of Value array
+| VoidValue of unit
 
 type Identifier = string
 

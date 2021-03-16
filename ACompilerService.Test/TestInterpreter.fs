@@ -4,6 +4,7 @@ open ACompilerService.Parser
 open ACompilerService.Ast
 open ACompilerService.Interpreter
 open ACompilerService.Utils
+open Microsoft.VisualStudio.TestPlatform.PlatformAbstractions
 open Xunit
 open System
 
@@ -85,4 +86,22 @@ let ``Interpreter test 12`` () =
     let wanted = BoolValue true
     Assert.Equal(wanted, parseAndEval prg)
  
- 
+[<Fact>]
+let ``Interpreter test 13`` () =
+    let prg = "(vector 1 2 3 4)"
+    let wanted = VecValue [|(IntValue 1L); (IntValue 2L); (IntValue 3L); (IntValue 4L)|]
+    Assert.Equal(wanted, parseAndEval prg)
+    
+[<Fact>]
+let``Interpreter test 14`` () =
+    let prg = "(vector-ref (vector 1 2 3 4) 0)"
+    let wanted = IntValue 1L
+    Assert.Equal(wanted, parseAndEval prg)
+    
+[<Fact>]
+let ``Interpreter test 15`` () =
+    let prg = "(let ([a (vector 1 2 3 4)])
+                  (let ([_ (vector-set! a 0 10)])
+                     (vector-ref a 0)))"
+    let wanted = IntValue 10L
+    Assert.Equal(wanted, parseAndEval prg)
