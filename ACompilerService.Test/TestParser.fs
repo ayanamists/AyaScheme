@@ -141,12 +141,12 @@ let ``post parser test 8`` () =
 let ``post parser test 9`` () =
     let res = parseToAst "(vector-ref (vector 1 2 3 4) 1)" |> getResult
     Assert.Equal(
-        VectorRef(Vector [ (Int 1L); (Int 2L) ;(Int 3L); (Int 4L) ], (Int 1L)), res
+        VectorRef(Vector [ (Int 1L); (Int 2L) ;(Int 3L); (Int 4L) ], 1), res
         )
 
 [<Fact>]
 let ``post parser test 10`` () =
     let res = parseToAst "(vector-set! (vector 1 2 3 4) 1 10)" |> getResult
     Assert.Equal(
-        VectorSet(Vector [ (Int 1L); (Int 2L) ;(Int 3L); (Int 4L) ], (Int 1L), (Int 10L)), res
+        VectorSet(Vector [ (Int 1L); (Int 2L) ;(Int 3L); (Int 4L) ], 1, (Int 10L)), res
         )

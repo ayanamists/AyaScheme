@@ -129,12 +129,11 @@ and handleBOp2 op lsexp =
     | _ -> SyntaxError (sprintf "Illegal %A Expr" op) |> Result.Error
 and handleVecRef lsexp =
     match lsexp with
-    | exp1 :: [ exp2 ] -> result2 sExpToAst exp1 sExpToAst exp2 (fun x y -> VectorRef (x, y))
+    | exp1 :: [ (SInt i)] -> result1 sExpToAst exp1 (fun x -> VectorRef (x, (int32)i))
     | _ -> SyntaxError "Illegal vector-ref Expr" |> Result.Error
 and handleVecSet lsexp =
     match lsexp with
-    | exp1 :: exp2 :: [ exp3 ] -> result3' sExpToAst exp1 exp2 exp3
-                                      (fun x y z -> VectorSet (x, y, z))
+    | exp1 :: (SInt i) :: [ exp3 ] -> result2' sExpToAst exp1 exp3 (fun x z -> VectorSet (x, (int32)i, z))
     | _ -> SyntaxError "Illegal vector-set! Expr" |> Result.Error
 and handleVec lsexp =
     result {

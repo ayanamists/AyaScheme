@@ -3,15 +3,51 @@
 open System
 open Ast
 open FSharpx.Collections
+open FSharpx.Collections
 open Utils
 open Coloring
 
-
+type ExprValueType =
+    | IntType of unit
+    | BoolType of unit
+    | VecType of ExprValueType array
+    | VoidType of unit
+    
+let intType = IntType ()
+let boolType = BoolType ()
+let voidType = VoidType ()
+   
+type CompileState =  { mutable newVarIdx: Index;
+                       mutable blockIds: Index
+                       mutable typeInfo: Map<Index, ExprValueType> }
+let emptyCompileState () = { newVarIdx = 0; blockIds = 0; typeInfo = Map [] }
+let mutable compileState = emptyCompileState ()
+let renewCompileState () =
+    compileState <- emptyCompileState ()
+let genSym () = 
+    let idx = compileState.newVarIdx
+    compileState.newVarIdx <- idx + 1
+    idx
+let getMaxIdxOfSym state =
+     state.newVarIdx
+let genBlockLabel () =
+    let idx = compileState.blockIds
+    compileState.blockIds <- idx + 1
+    idx |> sprintf "block-%A"
+let getType idx =
+    Map.tryFind idx compileState.typeInfo
+let assignType idx t =
+    compileState.typeInfo <- compileState.typeInfo.Add (idx, t)
+    
+let getVecType v idx =
+    match v with
+    | VecType v' -> if v'.Length <= idx then (makeVecOutBound idx v') |> Result.Error
+                    else v'.[idx] |> Result.Ok
+    | t -> makeTypeError VecType t |> Result.Error
+    
 (*
     type-check
 *)
-type ExprValueType = IntType = 0 | BoolType = 1
-
 
 let rec transformP1If cond =
     match cond with
@@ -27,84 +63,111 @@ let rec transformP1If cond =
 
      
 let makeVarNotBoundError i = (VarNotBoundError (sprintf "%A is Not bound" i))
-let typeCheck exp =
-    let rec typeCheckWithEnv exp env =
-        let typeEqual exp1 exp2 t1 t2 =
-            if t1 = t2
-            then t1 |> Result.Ok
-            else TypeError (sprintf "%A and %A should be same type" exp1 exp2) |> Result.Error
-        let typeEqualTo exp1 t1 target =
-            if t1 = target
-            then t1 |> Result.Ok
-            else TypeError (sprintf "%A should be %A, but have type %A" exp1 target t1) |> Result.Error
-        let opType exp1 exp2 t1 t2 target1 target2 target3 =
-            Result.bind (fun _ ->
-            Result.bind (fun _ ->
-                target3 |> Result.Ok
-            ) (typeEqualTo exp2 t2 target2)
-            ) (typeEqualTo exp1 t1 target1)
-        match exp with
-        | P1Int _ -> (exp, ExprValueType.IntType) |> Result.Ok
-        | P1Bool _ -> (exp, ExprValueType.BoolType) |> Result.Ok
-        | P1Id i ->
-            match searchEnv env i with
-            | Some t -> (exp, t) |> Result.Ok
-            | None -> Impossible () |> raise 
-        | P1LetExp (l, expr) ->
-            let rec handleL l =
-                match l with
-                | [] -> ([], env) |> Result.Ok
-                | (id, exp) :: tl ->
-                    result {
-                        let! (exp', t) = typeCheckWithEnv exp env
-                        let! (l', env') = handleL tl
-                        return ((id, exp') :: l', addEnv env' id t)
-                    }
-            result {
-                let! (l', env') = handleL l
-                let! (exp', t) = typeCheckWithEnv expr env'
-                return (P1LetExp (l', exp'), t)
-            }
-        | P1IfExp (cond, ifTrue, ifFalse) ->
-            result {
-                let! (cond', tCond) = (typeCheckWithEnv cond env)
-                let! (ifTrue', tIfTrue) = (typeCheckWithEnv ifTrue env)
-                let! (ifFalse', tIfFalse) = (typeCheckWithEnv ifFalse env)
-                let! _ = (typeEqualTo cond tCond ExprValueType.BoolType)
-                let! _ = (typeEqual ifTrue' ifFalse' tIfFalse tIfTrue)
-                return (P1IfExp (transformP1If cond', ifTrue', ifFalse'), tIfTrue)
-            }
-        | P1OpExp (op, exp1, exp2) ->
-            Result.bind (fun (exp1', expT1) ->
-            Result.bind (fun (exp2', expT2) ->
-                let makeBOp t1 t2 t3 =
-                     result {
-                       let! t = opType exp1' exp2' expT1 expT2 t1 t2 t3
-                       return (P1OpExp (op, exp1', exp2'), t)
-                     } 
-                match op with
-                | ExprOp.Add | ExprOp.Sub | ExprOp.Div | ExprOp.Mult ->
-                    makeBOp ExprValueType.IntType ExprValueType.IntType ExprValueType.IntType
-                | ExprOp.And | ExprOp.Or ->
-                    makeBOp ExprValueType.BoolType ExprValueType.BoolType ExprValueType.BoolType
-                | ExprOp.IEqB | ExprOp.IEq | ExprOp.IEqL | ExprOp.IB | ExprOp.IL ->
-                    makeBOp ExprValueType.IntType ExprValueType.IntType ExprValueType.BoolType
-                 | ExprOp.Eq ->
-                     if not (expT1 = expT2) then (P1Bool false, ExprValueType.BoolType) |> Result.Ok
-                     else (P1OpExp (op, exp1', exp2'), ExprValueType.BoolType) |> Result.Ok
-                | _ -> Impossible () |> raise
-            ) (typeCheckWithEnv exp2 env)
-            ) (typeCheckWithEnv exp1 env)
-        | P1UOpExp (op, exp1) ->
-            result {
-                let! (exp1', t) = (typeCheckWithEnv exp1 env)
-                let _ = typeEqualTo exp1' t ExprValueType.BoolType
-                return (P1UOpExp (op, exp1'), t)
-            }
-    typeCheckWithEnv exp emptyEnv
+let rec typeCheck exp =
+    let typeEqual exp1 exp2 t1 t2 =
+        if t1 = t2
+        then t1 |> Result.Ok
+        else TypeError (sprintf "%A and %A should be same type" exp1 exp2) |> Result.Error
+    let typeEqualTo exp1 t1 target =
+        if t1 = target
+        then t1 |> Result.Ok
+        else TypeError (sprintf "%A should be %A, but have type %A" exp1 target t1) |> Result.Error
+    let opType exp1 exp2 t1 t2 target1 target2 target3 =
+        Result.bind (fun _ ->
+        Result.bind (fun _ ->
+            target3 |> Result.Ok
+        ) (typeEqualTo exp2 t2 target2)
+        ) (typeEqualTo exp1 t1 target1)
+    match exp with
+    | P1Int _ -> (exp, ExprValueType.IntType ()) |> Result.Ok
+    | P1Bool _ -> (exp, ExprValueType.BoolType ()) |> Result.Ok
+    | P1Id i ->
+        match getType i with
+        | Some t -> (exp, t) |> Result.Ok
+        | None -> Impossible () |> raise
+    | P1LetExp (l, expr) ->
+        let rec handleL l =
+            match l with
+            | [] -> [] |> Result.Ok
+            | (id, exp) :: tl ->
+                result {
+                    let! (exp', t) = typeCheck exp
+                    assignType id t
+                    let! l' = handleL tl
+                    return (id, exp') :: l'
+                }
+        result {
+            let! l' = handleL l
+            let! (exp', t) = typeCheck expr
+            return (P1LetExp (l', exp'), t)
+        }
+    | P1IfExp (cond, ifTrue, ifFalse) ->
+        result {
+            let! (cond', tCond) = typeCheck cond
+            let! (ifTrue', tIfTrue) = typeCheck ifTrue
+            let! (ifFalse', tIfFalse) = typeCheck ifFalse
+            let! _ = typeEqualTo cond tCond (ExprValueType.BoolType ())
+            let! _ = (typeEqual ifTrue' ifFalse' tIfFalse tIfTrue)
+            return (P1IfExp (transformP1If cond', ifTrue', ifFalse'), tIfTrue)
+        }
+    | P1OpExp (op, exp1, exp2) ->
+        Result.bind (fun (exp1', expT1) ->
+        Result.bind (fun (exp2', expT2) ->
+            let makeBOp t1 t2 t3 =
+                 result {
+                   let! t = opType exp1' exp2' expT1 expT2 t1 t2 t3
+                   return (P1OpExp (op, exp1', exp2'), t)
+                 } 
+            match op with
+            | ExprOp.Add | ExprOp.Sub | ExprOp.Div | ExprOp.Mult ->
+                makeBOp intType intType intType
+            | ExprOp.And | ExprOp.Or ->
+                makeBOp boolType boolType boolType
+            | ExprOp.IEqB | ExprOp.IEq | ExprOp.IEqL | ExprOp.IB | ExprOp.IL ->
+                makeBOp intType intType boolType
+            | ExprOp.Eq ->
+                 if not (expT1 = expT2) then (P1Bool false, boolType) |> Result.Ok 
+                 else (P1OpExp (op, exp1', exp2'), boolType) |> Result.Ok
+            | _ -> Impossible () |> raise
+        ) (typeCheck exp2)
+        ) (typeCheck exp1)
+    | P1UOpExp (op, exp1) ->
+        result {
+            let! (exp1', t) = (typeCheck exp1 )
+            match op with
+            | ExprUOp.Not ->
+                let! _ = typeEqualTo exp1' t boolType
+                return (P1UOpExp (op, exp1'), boolType)
+            | ExprUOp.VecLen -> 
+                let! _ = typeEqualTo exp1' t boolType
+                return (P1UOpExp (op, exp1'), intType)
+            | _ -> return Impossible () |> raise
+        }
+    | P1Vector l ->
+        result {
+            let! l' = resultMap typeCheck l
+            let tl = List.map snd l'
+            let vl = List.map fst l'
+            return (P1Vector vl, VecType (Array.ofList tl))
+        }
+    | P1VectorSet (v, idx, value) ->
+        result {
+            let! (v', tv) = typeCheck v
+            let! (value', tvalue) = typeCheck value
+            let! tvv = getVecType tv idx
+            typeEqualTo value' tvalue tvv |> ignore
+            return (P1VectorSet (v', idx, value'), tvv)
+        }
+    | P1VectorRef (v, idx) ->
+        result {
+            let! (v', tv) = typeCheck v
+            let! tvv = getVecType tv idx
+            return (P1VectorRef (v', idx), tvv)
+        }
+        
 
 (*
-    Pass 1: Lexical Address
+    Pass 1: Leal Address
     e.g. 
          in  -> (let ([a 10] [b 20])
                   (let ([c 11] [a 12])
@@ -117,7 +180,7 @@ let typeCheck exp =
 
 
 let lexicalAddress exp =
-    let rec loop exp (env:Env<Identifier, Index>) = 
+    let rec loop (env:Env<Identifier, Index>) exp = 
         match exp with
         | Expr.Int i -> P1Int i |> Result.Ok
         | Expr.Bool b -> P1Bool b |> Result.Ok
@@ -132,33 +195,41 @@ let lexicalAddress exp =
                 | (id , exp) :: tl ->
                     result {
                         let idx = genSym ()
-                        let! x = loop exp env
+                        let! x = loop env exp 
                         return! handleList tl ((idx, x) :: nowL) (addEnv nowEnv id idx)
                     }
             result {
                 let! (nowL, nowEnv) = (handleList l [] env)
-                let! nowExpr = loop expr nowEnv
+                let! nowExpr = loop nowEnv expr
                 return Pass1Out.P1LetExp ((List.rev nowL), nowExpr)
             }
         | Expr.OpExp (op, expr1, expr2) ->
             result {
-                let! e1 = loop expr1 env
-                let! e2 = loop expr2 env
+                let! e1 = loop env expr1 
+                let! e2 = loop env expr2 
                 return Pass1Out.P1OpExp (op, e1, e2 )
             }
         | Expr.IfExp (cond, ifTrue, ifFalse) ->
             result {
-                let! e1 = loop cond env
-                let! e2 = loop ifTrue env
-                let! e3 = loop ifFalse env
+                let! e1 = loop env cond 
+                let! e2 = loop env ifTrue 
+                let! e3 = loop env ifFalse 
                 return P1IfExp (e1, e2, e3)
             }
         | Expr.UOpExp (op, exp) ->
             result {
-                let! exp' = loop exp env
+                let! exp' = loop env exp 
                 return P1UOpExp (op, exp')
             }
-    loop exp emptyEnv<Identifier, Index>
+        | Expr.Vector l -> result {
+            let! l' = resultMap (fun x -> loop env x ) l
+            return P1Vector l'
+            }
+        | Expr.VectorRef (v, idx) ->
+            result1 (loop env) v (fun v' -> P1VectorRef (v', idx))
+        | Expr.VectorSet (v, idx, value) ->
+            result2' (loop env) v value (fun v' value'  -> P1VectorSet (v', idx, value'))
+    loop emptyEnv<Identifier, Index> exp
 
 let pass1 x = result {
     let! x' = lexicalAddress x

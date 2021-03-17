@@ -106,15 +106,13 @@ let rec evalWithEnv exp env =
             VecValue [| for i in l' -> i |]
         | Expr.VectorRef (v, idx) ->
             let v' = evalWithEnv v env |> getVecValue
-            let idx' = evalWithEnv idx env |> getIntValue |> int32
-            testVecIdx v' idx'
-            v'.[idx']
+            testVecIdx v' idx
+            v'.[idx]
         | Expr.VectorSet (v, idx, value) ->
             let v' = evalWithEnv v env |> getVecValue
-            let idx' = evalWithEnv idx env |> getIntValue |> int32
-            testVecIdx v' idx'
+            testVecIdx v' idx
             let value' = evalWithEnv value env
-            v'.[idx'] <- value'
+            v'.[idx] <- value'
             VoidValue ()
 
 let eval exp = evalWithEnv exp []

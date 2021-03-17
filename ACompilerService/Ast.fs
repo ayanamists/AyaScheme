@@ -43,8 +43,8 @@ type Expr =
 | IfExp of Expr * Expr * Expr
 | OpExp of ExprOp * Expr * Expr
 | UOpExp of ExprUOp * Expr
-| VectorRef of Expr * Expr
-| VectorSet of Expr * Expr * Expr
+| VectorRef of Expr * int
+| VectorSet of Expr * int * Expr
 | Vector of Expr list
 
 type Pass1Out = 
@@ -55,7 +55,9 @@ type Pass1Out =
 | P1OpExp of ExprOp * Pass1Out * Pass1Out
 | P1IfExp of Pass1Out * Pass1Out * Pass1Out
 | P1UOpExp of ExprUOp * Pass1Out
-
+| P1VectorRef of Pass1Out * int
+| P1VectorSet of Pass1Out * int * Pass1Out
+| P1Vector of Pass1Out list
 type Pass2Atm = 
 | P2Int of int64
 | P2Var of Index

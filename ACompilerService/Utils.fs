@@ -11,29 +11,20 @@ let getResult res =
     match res with
     | Result.Ok t -> t
     | _ -> Impossible () |> raise
+
+type Index = int
 type CompileError =
     | TypeError of string
     | VarNotBoundError of string
     | SyntaxError of string
+    | VecIdxOutBound of string
     
-type Index = int
-type CompileState =  { mutable newVarIdx: Index;
-                       mutable blockIds: Index; }
-let emptyCompileState () = { newVarIdx = 0; blockIds = 0;}
-let mutable compileState = emptyCompileState ()
-let renewCompileState () =
-    compileState <- emptyCompileState ()
-let genSym () = 
-    let idx = compileState.newVarIdx
-    compileState.newVarIdx <- idx + 1
-    idx
-let getMaxIdxOfSym state =
-     state.newVarIdx 
-let genBlockLabel () =
-    let idx = compileState.blockIds
-    compileState.blockIds <- idx + 1
-    idx |> sprintf "block-%A"
-
+let makeVecOutBound idx v =
+    sprintf "length of vec is %A, but ref pos %A" (Array.length v) idx |> VecIdxOutBound
+    
+let makeTypeError tNeed tReal =
+    sprintf "should be type %A, but is %A" tNeed tReal |> TypeError
+ 
 type Env<'A, 'B when 'A : comparison> = BEnv of Map<'A, 'B>
 let rec searchEnv (env:Env<'A, 'B>) var =
     match env with 

@@ -60,13 +60,13 @@ let toChecked x =
 [<Fact>]
 let ``typeCheck Test 1`` () =
     let prg = "(let ([a 1]) a)"
-    let wanted = Result.Ok ExprValueType.IntType
+    let wanted = Result.Ok (ExprValueType.IntType ())
     Assert.Equal(wanted, toChecked prg)
     
 [<Fact>]
 let ``typeCheck Test 2`` () =
     let prg = "(let ([t #t]) t)"
-    let wanted = Result.Ok ExprValueType.BoolType
+    let wanted = Result.Ok (ExprValueType.BoolType ())
     Assert.Equal(wanted, toChecked prg)
     
 [<Fact>]
@@ -93,7 +93,7 @@ let ``typeCheck Test 5`` () =
 [<Fact>]
 let ``typeCheck Test 6`` () =
     let prg = "(eq? 1 #t)"
-    let res = ExprValueType.BoolType |> Result.Ok
+    let res = ExprValueType.BoolType () |> Result.Ok
     Assert.Equal(res, toChecked prg)
  
 let toPass1 x =

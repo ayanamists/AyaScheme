@@ -9,4 +9,4 @@ Microsoft (R) 测试执行命令行工具版本 16.8.3
 正在启动测试执行，请稍候...
 总共 1 个测试文件与指定模式相匹配。
 
-已通过! - Failed:     0, Passed:    96, Skipped:     0, Total:    96, Duration: 1 s- /home/ayanamists/source/AyaScheme/ACompilerService.Test/bin/Debug/netcoreapp5/ACompilerService.Test.dll (net5.0)
+已通过! - Failed:     0, Passed:   103, Skipped:     0, Total:   103, Duration: 1 s- /home/ayanamists/source/AyaScheme/ACompilerService.Test/bin/Debug/netcoreapp5/ACompilerService.Test.dll (net5.0)
