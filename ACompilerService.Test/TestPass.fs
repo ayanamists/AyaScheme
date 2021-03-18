@@ -48,6 +48,9 @@ let prgList =
         "(= 1 2)"                                    // 17
         "(> 1 2)"                                    // 18
         "(>= 1 2)"                                   // 19
+        "(vector (vector 1 2 3 4) 2 3 4)"            // 20
+        "(vector-ref (vector 1 2 3 4) 1)"            // 21
+        "(vector-set! (vector 1 2 3 4) 1 10)"        // 22
     |]
 
 let toChecked x =
@@ -127,8 +130,8 @@ let ``typeCheck Test 9`` () =
 let toPass1 x =
     renewCompileState ()
     Result.bind pass1 (parseToAst x) 
-let testPass1 x = toPass1 x
-let makeRes x = Result.Ok x
+let testPass1 x = toPass1 x |> getResult
+let makeRes x = x
 [<Fact>]
 let ``Pass 1 test 1`` () = 
     let prg = "(let ([a 1] [b 2]) (+ a b))"
@@ -155,7 +158,7 @@ let ``Pass 1 test 2`` () =
 [<Fact>]
 let ``Pass 1 test 3`` () =
    let prg = "(+ a b)"
-   match (testPass1 prg) with
+   match (toPass1 prg) with
    | Result.Error (VarNotBoundError _) -> Assert.True
    | _ -> Assert.False
    
@@ -189,8 +192,7 @@ let ``Pass 1 test 6`` () =
     let res = testPass1 prg
     Assert.Equal(wanted, res)
 let toPass2 x = Result.bind pass2 (toPass1 x) 
-let testPass2 x = toPass2 x
-
+let testPass2 x = toPass2 x |> getResult
 
 [<Fact>]
 let ``Pass 2 test 1`` () =
@@ -251,11 +253,58 @@ let ``Pass 2 test 5`` () =
         |> makeRes
     Assert.Equal(wanted, testPass2 prg)
     
+[<Fact>]
+let ``Pass 2 test 6`` () =
+    let prg = prgList.[20]
+    let wanted =
+        P2LetExp (0, P2LetExp (1
+                              ,P2Allocate (32, (VecType [|intType; intType; intType; intType|]))
+                              ,(P2LetExp (0, (P2VectorSet (1,0 , P2Int 1L))
+                                             ,P2LetExp (0, P2VectorSet (1, 1, P2Int 2L)
+                                                       ,P2LetExp (0, P2VectorSet (1, 2, P2Int 3L)
+                                                                 ,P2LetExp (0, P2VectorSet (1, 3, P2Int 4L)
+                                                                           ,P2VarAtm 1))))))
+                 ,P2LetExp (2, P2Allocate (32, (VecType [| (VecType [|intType; intType; intType; intType|])
+                                                           intType; intType; intType |]))
+                           ,(P2LetExp (0, (P2VectorSet (2, 0, P2Var 0))
+                                      ,P2LetExp (0, (P2VectorSet (2, 1, P2Int 2L))
+                                                ,P2LetExp (0, P2VectorSet (2, 2, P2Int 3L)
+                                                          ,P2LetExp (0, P2VectorSet (2, 3, P2Int 4L)
+                                                                    ,P2VarAtm 2)))))))
+    Assert.Equal(wanted, testPass2 prg )
+    
+[<Fact>]
+let ``Pass 2 test 7`` () =
+    let prg = prgList.[21]
+    let wanted =
+         P2LetExp (0, P2LetExp (1
+                               ,P2Allocate (32, (VecType [|intType; intType; intType; intType|]))
+                               ,(P2LetExp (0, (P2VectorSet (1,0 , P2Int 1L))
+                                              ,P2LetExp (0, P2VectorSet (1, 1, P2Int 2L)
+                                                        ,P2LetExp (0, P2VectorSet (1, 2, P2Int 3L)
+                                                                  ,P2LetExp (0, P2VectorSet (1, 3, P2Int 4L)
+                                                                            ,P2VarAtm 1))))))
+                  ,P2VectorRef (0, 1))
+    Assert.Equal(wanted, testPass2 prg) 
+ 
+[<Fact>]
+let ``Pass 2 test 8`` () =
+    let prg = prgList.[22]
+    let wanted =
+         P2LetExp (0, P2LetExp (1
+                               ,P2Allocate (32, (VecType [|intType; intType; intType; intType|]))
+                               ,(P2LetExp (0, (P2VectorSet (1,0 , P2Int 1L))
+                                              ,P2LetExp (0, P2VectorSet (1, 1, P2Int 2L)
+                                                        ,P2LetExp (0, P2VectorSet (1, 2, P2Int 3L)
+                                                                  ,P2LetExp (0, P2VectorSet (1, 3, P2Int 4L)
+                                                                            ,P2VarAtm 1))))))
+                 ,P2VectorSet (0, 1, P2Int 10L))
+    Assert.Equal(wanted, testPass2 prg) 
 let toPass3 x = result {
     let! x' = toPass2 x 
     return! (pass3 x')
 }
-let testPass3 x = toPass3 x
+let testPass3 x = toPass3 x |> getResult
 [<Fact>]
 let ``Pass 3 test 1`` () =
     let prg = prgList.[0]
@@ -664,10 +713,12 @@ let ``Pass 4 test 17`` () =
     let res = testPass4 prg
     Assert.Equal(wanted , res)
         
-let testCtrFlow x = result {
+let testCtrFlow' x = result {
     let! res = toPass4 x
     return (makeCtrFlowGraph res)
 }
+
+let testCtrFlow x = testCtrFlow' x |> getResult
 
 [<Fact>]
 let ``CtrFlow test 1`` () =

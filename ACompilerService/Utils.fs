@@ -248,3 +248,16 @@ let graphUnion (G g1) (G g2) =
     List.map (fun x -> (x, Set.union (Map.find x g1) (Map.find x g2))) v
     |> Map.ofList
     |> G
+    
+let listToTuple1 l =
+    match l with
+    | [e1;] -> e1
+    | _ -> Impossible () |> raise
+let listToTuple2 l =
+    match l with
+    | [e1; e2] -> (e1, e2)
+    | _ -> Impossible () |> raise
+let listToTuple1f f l =
+    listToTuple1 l |> f
+let listToTuple2f f l =
+    listToTuple2 l |> fun (e1, e2) -> f e1 e2

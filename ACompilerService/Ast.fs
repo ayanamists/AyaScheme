@@ -1,5 +1,7 @@
 ﻿module ACompilerService.Ast
 
+open System
+open System
 open Utils
 
 type Value = 
@@ -34,7 +36,12 @@ let printOp (op:ExprOp) =
     | ExprOp.And -> "and"
     | ExprOp.Or -> "or"
     | _ -> Failure ("Impossible") |> raise
-
+    
+type ExprValueType =
+    | IntType of unit
+    | BoolType of unit
+    | VecType of ExprValueType array
+    | VoidType of unit
 type Expr = 
 | Int of int64
 | Bool of bool
@@ -57,7 +64,8 @@ type Pass1Out =
 | P1UOpExp of ExprUOp * Pass1Out
 | P1VectorRef of Pass1Out * int
 | P1VectorSet of Pass1Out * int * Pass1Out
-| P1Vector of Pass1Out list
+| P1Vector of Pass1Out list * ExprValueType
+
 type Pass2Atm = 
 | P2Int of int64
 | P2Var of Index
@@ -69,6 +77,9 @@ type Pass2Out =
 | P2OpExp of ExprOp * Pass2Atm * Pass2Atm
 | P2UOpExp of ExprUOp * Pass2Atm
 | P2IfExp of Pass2Out * Pass2Out * Pass2Out
+| P2VectorRef of Index * int
+| P2VectorSet of Index * int * Pass2Atm
+| P2Allocate of int * ExprValueType
 let P2IntAtm x = P2Int x |> P2Atm
 let P2VarAtm x = P2Var x |> P2Atm
 

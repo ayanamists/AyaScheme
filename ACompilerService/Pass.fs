@@ -3,14 +3,9 @@
 open System
 open Ast
 open FSharpx.Collections
+open FSharpx.Collections
 open Utils
 open Coloring
-
-type ExprValueType =
-    | IntType of unit
-    | BoolType of unit
-    | VecType of ExprValueType array
-    | VoidType of unit
     
 let intType = IntType ()
 let boolType = BoolType ()
@@ -148,12 +143,13 @@ let rec typeCheck exp =
                 return (P1UOpExp (op, exp1'), intType)
             | _ -> return Impossible () |> raise
         }
-    | P1Vector l ->
+    | P1Vector (l, _) ->
         result {
             let! l' = resultMap typeCheck l
             let tl = List.map snd l'
             let vl = List.map fst l'
-            return (P1Vector vl, VecType (Array.ofList tl))
+            let t = VecType (Array.ofList tl)
+            return (P1Vector (vl, t), t)
         }
     | P1VectorSet (v, idx, value) ->
         result {
@@ -171,7 +167,7 @@ let rec typeCheck exp =
         
 
 (*
-    Pass 1: Leal Address
+    Pass 1: Lexical Address
     e.g. 
          in  -> (let ([a 10] [b 20])
                   (let ([c 11] [a 12])
@@ -227,7 +223,7 @@ let lexicalAddress exp =
             }
         | Expr.Vector l -> result {
             let! l' = resultMap (fun x -> loop env x ) l
-            return P1Vector l'
+            return P1Vector (l', voidType)
             }
         | Expr.VectorRef (v, idx) ->
             result1 (loop env) v (fun v' -> P1VectorRef (v', idx))
@@ -251,6 +247,30 @@ let isAtomPass1Out p1o =
     | P1Int _ -> true
     | _ -> false
 
+let listToTuple1 l =
+    match l with
+    | [e1;] -> e1
+    | _ -> Impossible () |> raise
+let listToTuple2 l =
+    match l with
+    | [e1; e2] -> (e1, e2)
+    | _ -> Impossible () |> raise
+let listToTuple1f f l =
+    listToTuple1 l |> f
+let listToTuple2f f l =
+    listToTuple2 l |> fun (e1, e2) -> f e1 e2
+   
+let rec calcSpace t =
+    match t with
+    | VecType v' -> (Array.length v') * 8
+    | _ -> 8
+    
+let makeP2Vec t l  =
+    let newVar = genSym ()
+    let l' = List.mapi (fun i x -> P2VectorSet (newVar, i, x)) l 
+    let l'' = List.foldBack (fun x exp -> P2LetExp (0, x, exp)) l' (P2VarAtm newVar)
+    P2LetExp (newVar, (P2Allocate (calcSpace t, t)), l'' )
+    
 let anf exp = 
     let rec loop exp = 
         match exp with 
@@ -261,18 +281,30 @@ let anf exp =
             match l with
             | [] -> loop exp
             | (var, vexp) :: tl ->
-                    let v = loop vexp
-                    let t = (P1LetExp (tl, exp)) |> loop
-                    P2LetExp (var, v, t)
+                let v = loop vexp
+                let t = (P1LetExp (tl, exp)) |> loop
+                P2LetExp (var, v, t)
         | P1OpExp (op, expr1, expr2) -> 
-            anfList (fun [e1; e2] -> P2OpExp (op, e1, e2)) [expr1; expr2]
+            anfList ((fun e1 e2 -> P2OpExp (op, e1, e2)) |> listToTuple2f) [expr1; expr2]
         | P1UOpExp (op, expr1) ->
-            anfList (fun [e1;] -> P2UOpExp (op, e1)) [expr1]
+            anfList ((fun e1 -> P2UOpExp (op, e1)) |> listToTuple1f) [expr1]
         | P1IfExp (exp1, exp2, exp3) ->
             let exp1' = loop exp1
             let exp2' = loop exp2
             let exp3' = loop exp3
             P2IfExp (exp1', exp2', exp3')
+        | P1Vector (l, t) ->
+            anfList (makeP2Vec t) l
+        | P1VectorRef (v, i) ->
+            let f x = match x with
+                      | [ P2Var i' ] -> P2VectorRef( i', i)
+                      | _ -> Impossible () |> raise 
+            anfList f [v]
+        | P1VectorSet (v, i, value) ->
+            let f x = match x with
+                      | [ P2Var v'; value' ] -> P2VectorSet (v', i, value')
+                      | _ -> Impossible () |> raise
+            anfList f [v; value]
     and anfList func expl =
         let rec handleExpl expl ids = 
             match expl with
