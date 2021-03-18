@@ -28,9 +28,9 @@ let pIds, pIdsRef =
      createParserForwardedToRef<SExpression list, unit>()
 
 let pSExp = pLPair >>. spaces >>. pIds |>> SExp
-let pAll = pNum <|> pId  <|> pBool <|> pSExp
+let pAll = spaces >>. ( pNum <|> pId  <|> pBool <|> pSExp ) .>> spaces
 
-do pIdsRef := many1Till (pAll .>> spaces) pRPair
+do pIdsRef := many1Till pAll pRPair
 
 let parse str = 
     match (run pAll str) with

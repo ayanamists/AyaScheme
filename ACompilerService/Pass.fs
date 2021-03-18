@@ -3,7 +3,6 @@
 open System
 open Ast
 open FSharpx.Collections
-open FSharpx.Collections
 open Utils
 open Coloring
 
@@ -45,6 +44,12 @@ let getVecType v idx =
                     else v'.[idx] |> Result.Ok
     | t -> makeTypeError VecType t |> Result.Error
     
+let setVecType v idx t' =
+    match v with
+    | VecType v' -> if v'.Length <= idx then (makeVecOutBound idx v') |> Result.Error
+                    else v'.[idx] <- t'
+                         () |> Result.Ok
+    | t -> makeTypeError VecType t |> Result.Error
 (*
     type-check
 *)
@@ -154,9 +159,8 @@ let rec typeCheck exp =
         result {
             let! (v', tv) = typeCheck v
             let! (value', tvalue) = typeCheck value
-            let! tvv = getVecType tv idx
-            typeEqualTo value' tvalue tvv |> ignore
-            return (P1VectorSet (v', idx, value'), tvv)
+            let! _ = setVecType tv idx tvalue
+            return (P1VectorSet (v', idx, value'), voidType)
         }
     | P1VectorRef (v, idx) ->
         result {

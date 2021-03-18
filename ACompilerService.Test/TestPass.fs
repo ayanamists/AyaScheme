@@ -18,7 +18,9 @@ let printResult r =
 let getResult res =
     match res with
     | Result.Ok t -> t
-    | _ -> Impossible () |> raise
+    | Result.Error r ->
+        printfn "%A" r 
+        Impossible () |> raise
 let prgList = 
     [|
         "(let ([a 1] [b 2]) (+ a b))"                // 0
@@ -96,6 +98,32 @@ let ``typeCheck Test 6`` () =
     let res = ExprValueType.BoolType () |> Result.Ok
     Assert.Equal(res, toChecked prg)
  
+[<Fact>]
+let ``typeCheck Test 7`` () =
+    let prg = "(vector 1 2 3 4)"
+    let res = ExprValueType.VecType [| intType; intType; intType; intType |]
+    Assert.Equal(res, toChecked prg |> getResult)
+    
+[<Fact>]
+let ``typeCheck Test 8`` () =
+    let prg = "
+        (let ([a (vector 1 2 3 4)])
+          (let ([b (vector-ref a 1)])
+            b))
+    "
+    let res = intType
+    Assert.Equal(res, toChecked prg |> getResult)
+    
+[<Fact>]
+let ``typeCheck Test 9`` () =
+     let prg = "
+         (let ([a (vector 1 2 3 4)])
+           (let ([_ (vector-set! a 1 #t)])
+             (let ([b (vector-ref a 1)])
+               b)))
+     "
+     let res = boolType
+     Assert.Equal(res, toChecked prg |> getResult)   
 let toPass1 x =
     renewCompileState ()
     Result.bind pass1 (parseToAst x) 
