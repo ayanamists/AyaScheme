@@ -10,8 +10,10 @@ exception Impossible of unit
 let getResult res =
     match res with
     | Result.Ok t -> t
-    | _ -> Impossible () |> raise
-
+    | Result.Error r ->
+        printfn "%A" r 
+        Impossible () |> raise
+        
 type Index = int
 type CompileError =
     | TypeError of string

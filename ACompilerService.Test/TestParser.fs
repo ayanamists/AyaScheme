@@ -60,6 +60,12 @@ let ``test 7`` () =
              ]))
 
 [<Fact>]
+let ``test 8`` () =
+    let tprg = "(int, int, bool, int)"
+    let t = runParser pType tprg |> getResult
+    Assert.Equal(t, VecType [|intType; intType; boolType; intType|])
+
+[<Fact>]
 let ``post parser test 1`` () = 
        let res = parseToAst "(let \n ((x 10) (y 20)) (+ x y))"
        match res with
@@ -150,3 +156,4 @@ let ``post parser test 10`` () =
     Assert.Equal(
         VectorSet(Vector [ (Int 1L); (Int 2L) ;(Int 3L); (Int 4L) ], 1, (Int 10L)), res
         )
+    

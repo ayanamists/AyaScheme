@@ -42,6 +42,11 @@ type ExprValueType =
     | BoolType of unit
     | VecType of ExprValueType array
     | VoidType of unit
+    
+let intType = IntType ()
+let boolType = BoolType ()
+let voidType = VoidType ()
+
 type Expr = 
 | Int of int64
 | Bool of bool
@@ -96,6 +101,9 @@ type Pass3Exp =
 | P3Atm of Pass3Atm
 | P3BPrim of ExprOp * Pass3Atm * Pass3Atm
 | P3UPrim of ExprUOp * Pass3Atm
+| P3Allocate of int * ExprValueType
+| P3VectorRef of Index * int
+| P3VectorSet of Index * int * Pass3Atm
 type Pass3Goto = P3Goto of Label
 type Pass3Stmt =
 | P3Assign of Index * Pass3Exp

@@ -10,6 +10,18 @@ type SExpression =
 | SBool of bool
 | SExp of SExpression list
 
+let pType, pTypeRef = createParserForwardedToRef<ExprValueType, unit>()
+
+let pIntType = pstring "int" >>% ExprValueType.IntType ()
+let pBoolType = pstring "bool" >>% ExprValueType.BoolType ()
+let pVecType = 
+    pchar '(' >>.
+    (pType  .>>. manyTill (spaces >>. pchar ',' >>. spaces >>. pType .>> spaces) (pchar ')'))
+    |>> fun (x, l) -> x :: l |> Array.ofList |> ExprValueType.VecType
+let pVoidType = pstring "void" >>% ExprValueType.VoidType ()
+
+do pTypeRef := pIntType <|> pBoolType <|> pVecType <|> pVoidType
+
 let pLPair = pchar '(' <|> pchar '[' <|> pchar '{'
 let pRPair = pchar ')' <|> pchar ']' <|> pchar '}'
 
@@ -145,3 +157,9 @@ let parseToAst code =
         let! code' = parse code
         return! sExpToAst code'
     }
+    
+let runParser parser str = 
+    match (run parser str) with
+    | Success(res, _, _) -> Result.Ok res
+    | Failure(errorMsg, _, _) -> Result.Error (SyntaxError errorMsg)
+let parseType str = runParser pType

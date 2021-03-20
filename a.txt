@@ -1,12 +1,24 @@
-  ÕıÔÚÈ·¶¨Òª»¹Ô­µÄÏîÄ¿¡­
-  ËùÓĞÏîÄ¿¾ùÊÇ×îĞÂµÄ£¬ÎŞ·¨»¹Ô­¡£
-  ACompilerService -> C:\Users\MI\source\repos\AyaScheme\ACompilerService\bin\Debug\netcoreapp5\ACompilerService.dll
-  ACompilerService.Test -> C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\bin\Debug\netcoreapp5\ACompilerService.Test.dll
-C:\Users\MI\source\repos\AyaScheme\ACompilerService.Test\bin\Debug\netcoreapp5\ACompilerService.Test.dll µÄ²âÊÔÔËĞĞ(.NETCoreApp,Version=v5.0)
-Microsoft (R) ²âÊÔÖ´ĞĞÃüÁîĞĞ¹¤¾ß°æ±¾ 16.8.3
-°æÈ¨ËùÓĞ (C) Microsoft Corporation¡£±£ÁôËùÓĞÈ¨Àû¡£
+  æ­£åœ¨ç¡®å®šè¦è¿˜åŸçš„é¡¹ç›®â€¦
+  æ‰€æœ‰é¡¹ç›®å‡æ˜¯æœ€æ–°çš„ï¼Œæ— æ³•è¿˜åŸã€‚
+  ACompilerService -> /home/ayanamists/source/AyaScheme/ACompilerService/bin/Debug/netcoreapp5/ACompilerService.dll
+  ACompilerService.Test -> /home/ayanamists/source/AyaScheme/ACompilerService.Test/bin/Debug/netcoreapp5/ACompilerService.Test.dll
+/home/ayanamists/source/AyaScheme/ACompilerService.Test/bin/Debug/netcoreapp5/ACompilerService.Test.dll çš„æµ‹è¯•è¿è¡Œ(.NETCoreApp,Version=v5.0)
+Microsoft (R) æµ‹è¯•æ‰§è¡Œå‘½ä»¤è¡Œå·¥å…·ç‰ˆæœ¬ 16.8.3
+ç‰ˆæƒæ‰€æœ‰ (C) Microsoft Corporationã€‚ä¿ç•™æ‰€æœ‰æƒåˆ©ã€‚
 
-ÕıÔÚÆô¶¯²âÊÔÖ´ĞĞ£¬ÇëÉÔºò...
-×Ü¹² 1 ¸ö²âÊÔÎÄ¼şÓëÖ¸¶¨Ä£Ê½ÏàÆ¥Åä¡£
+æ­£åœ¨å¯åŠ¨æµ‹è¯•æ‰§è¡Œï¼Œè¯·ç¨å€™...
+æ€»å…± 1 ä¸ªæµ‹è¯•æ–‡ä»¶ä¸æŒ‡å®šæ¨¡å¼ç›¸åŒ¹é…ã€‚
+SyntaxError
+  "Error in Ln: 1 Col: 6
+(int, int, bool, int)
+     ^
+Expecting: '(', 'bool', 'int' or 'void'
+"
+  å¤±è´¥ TestParser.test 8 [47 ms]
+  é”™è¯¯æ¶ˆæ¯:
+   ACompilerService.Utils+Impossible : Exception of type 'ACompilerService.Utils+Impossible' was thrown.
+  å †æ ˆè·Ÿè¸ª:
+     at ACompilerService.Utils.getResult[a,b](FSharpResult`2 res) in /home/ayanamists/source/AyaScheme/ACompilerService/Utils.fs:line 15
+   at TestParser.test 8() in /home/ayanamists/source/AyaScheme/ACompilerService.Test/TestParser.fs:line 65
 
-ÒÑÍ¨¹ı! - Failed:     0, Passed:   109, Skipped:     0, Total:   109, Duration: 2 s- ACompilerService.Test.dll (net5.0)
+å¤±è´¥!  - Failed:     1, Passed:   109, Skipped:     0, Total:   110, Duration: 1 s- /home/ayanamists/source/AyaScheme/ACompilerService.Test/bin/Debug/netcoreapp5/ACompilerService.Test.dll (net5.0)

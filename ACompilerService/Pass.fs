@@ -3,14 +3,9 @@
 open System
 open Ast
 open FSharpx.Collections
-open FSharpx.Collections
 open Utils
 open Coloring
     
-let intType = IntType ()
-let boolType = BoolType ()
-let voidType = VoidType ()
-   
 type CompileState =  { mutable newVarIdx: Index;
                        mutable blockIds: Index
                        mutable typeInfo: Map<Index, ExprValueType> }
@@ -268,7 +263,7 @@ let rec calcSpace t =
 let makeP2Vec t l  =
     let newVar = genSym ()
     let l' = List.mapi (fun i x -> P2VectorSet (newVar, i, x)) l 
-    let l'' = List.foldBack (fun x exp -> P2LetExp (0, x, exp)) l' (P2VarAtm newVar)
+    let l'' = List.foldBack (fun x exp -> P2LetExp (-1, x, exp)) l' (P2VarAtm newVar)
     P2LetExp (newVar, (P2Allocate (calcSpace t, t)), l'' )
     
 let anf exp = 
@@ -336,6 +331,15 @@ let p2OpExpToP3OpExp op atm1 atm2 =
     P3BPrim (op, atm1 |> p2AtmToP3Atm, atm2 |> p2AtmToP3Atm)
 let p2UOpExpToP3 op atm1 = P3UPrim (op, atm1 |> p2AtmToP3Atm)
 
+let transformP2 exp =
+    match exp with
+    | P2Atm atm -> let p3Atm = p2AtmToP3Atm atm in P3Atm p3Atm 
+    | P2OpExp (op, atm1, atm2) -> let p3Opbp = p2OpExpToP3OpExp op atm1 atm2 in p3Opbp
+    | P2UOpExp (op, atm1) -> p2UOpExpToP3 op atm1
+    | P2Allocate (size, t) -> P3Allocate (size, t) 
+    | P2VectorSet (v, idx, value) -> P3VectorSet (v, idx, p2AtmToP3Atm value) 
+    | P2VectorRef (v, idx) -> P3VectorRef (v, idx)
+    | _ -> Impossible () |> raise
 let explicitControl exp =
     let mutable acc = []
     let addBlock instrs label = 
@@ -344,26 +348,17 @@ let explicitControl exp =
         acc <- (genBlockLabel (), instrs) :: acc
     let rec explicitTail exp = 
         match exp with
-        | P2Atm atm -> let p3Atm = p2AtmToP3Atm atm in P3Atm p3Atm |> P3Return
         | P2LetExp (idx, rhs, e) -> let cont = explicitTail e in explicitAssign idx rhs cont
-        | P2OpExp (op, atm1, atm2) -> let p3Opbp = p2OpExpToP3OpExp op atm1 atm2 in P3Return p3Opbp
-        | P2UOpExp (op, atm1) -> p2UOpExpToP3 op atm1 |> P3Return
         | P2IfExp (cond, ifTrue, ifFalse) -> 
             let ifTrue' = lazy explicitTail ifTrue
             let ifFalse' = lazy explicitTail ifFalse
             explicitCond cond ifTrue' ifFalse'
+        | _ -> transformP2 exp |> P3Return
     and explicitAssign idx rhs cont = 
         match rhs with
-        | P2Atm atm -> let p3Atm = p2AtmToP3Atm atm in P3Seq (P3Assign (idx, p3Atm |> P3Atm), cont)
         | P2LetExp (idx2, rhs2, e) -> 
             let contE = explicitAssign idx e cont
             explicitAssign idx2 rhs2 contE
-        | P2OpExp (op, atm1, atm2) -> 
-            let p3Opbp = p2OpExpToP3OpExp op atm1 atm2
-            P3Seq (P3Assign (idx, p3Opbp), cont)
-        | P2UOpExp (op, atm1) ->
-            let p3Uop = p2UOpExpToP3 op atm1
-            P3Seq (P3Assign (idx, p3Uop), cont)
         | P2IfExp (cond, ifTrue, ifFalse) ->
             let contLabel = genBlockLabel ()
             let ifCont = P3Goto contLabel |> P3TailGoto
@@ -371,6 +366,7 @@ let explicitControl exp =
             let ifFalse' = lazy explicitAssign idx ifFalse ifCont
             addBlock cont contLabel
             explicitCond cond ifTrue' ifFalse'
+        | _ -> let rhs' = transformP2 rhs in P3Seq (P3Assign (idx, rhs'), cont)
     and explicitCond cond ifTrue ifFalse =
         let makeGoto (expr:Lazy<Pass3Tail>) =
             lazy match (expr.Force ()) with
@@ -383,11 +379,9 @@ let explicitControl exp =
             P3If (cond, ((makeGoto exp1).Force ()) ,
                   ((makeGoto exp2).Force ()) )
         match cond with
-        | P2Atm (P2Int _) -> Impossible () |> raise
         | P2Atm (P2Bool b) -> if b then ifTrue.Force () else ifFalse.Force ()
         | P2Atm (P2Var i) -> simpleExp (P3Var i |> P3Atm) ifTrue ifFalse
-        | P2OpExp (op, atm1, atm2) -> simpleExp (p2OpExpToP3OpExp op atm1 atm2) ifTrue ifFalse
-        | P2UOpExp (op, atm1) -> simpleExp (p2UOpExpToP3 op atm1) ifTrue ifFalse
+        | P2OpExp _  | P2UOpExp _ | P2VectorRef _ ->  simpleExp (transformP2 cond) ifTrue ifFalse
         | P2LetExp (var, value, exp) ->
             let cont = explicitCond exp ifTrue ifFalse
             explicitAssign var value cont
@@ -397,6 +391,7 @@ let explicitControl exp =
             let ifTrue'' = lazy explicitCond ifTrue' gotoIfTrue gotoIfFalse
             let ifFalse'' = lazy explicitCond ifFalse' gotoIfTrue gotoIfFalse
             explicitCond cond' ifTrue'' ifFalse''
+        | _ -> Impossible () |> raise
     let tail = explicitTail exp
     P3Program (emptyInfo, (startLabel, tail) :: acc) |> Result.Ok
 

@@ -39,8 +39,27 @@ let parseP3UOpExpr =
     parseP3UOp .>>.
         (spaces >>. parseP3Atm) 
     |>> fun (op, atm1) -> (op, atm1) |> P3UPrim
+    
+let parseVecRef :Parser<Pass3Exp,unit> =
+    pstring "vector-ref" >>.
+        (spaces >>. pchar '(' >>. pint32) .>>.
+        (pchar ',' >>. spaces >>. pint32 .>> spaces) .>> pchar ')'
+    |>> P3VectorRef
+
+let parseVecSet :Parser<Pass3Exp, unit> =
+    pstring "vector-set" >>.
+        (spaces >>. pchar '(' >>. pint32 ) .>> spaces .>>.
+        (pchar ','  >>. spaces >>.pint32 .>> spaces) .>>.
+        (pchar ',' >>.spaces >>.parseP3Atm .>> spaces) .>> pchar ')'
+    |>> (fun ((v, idx), atm) -> P3VectorSet (v, idx, atm))
+
+let parseP3Allocate :Parser<Pass3Exp, unit> =
+    pstring "allocate" >>.
+        (spaces >>. pchar '(' >>. pint32 .>> spaces) .>>.
+        (pchar ',' >>. spaces >>. pType  .>> pchar ')') |>> P3Allocate
 
 let parseP3Exp = parseP3Atm' <|> parseP3BOpExpr <|> parseP3UOpExpr
+                 <|> parseP3Allocate <|> parseVecSet <|> parseVecRef
 
 let parseP3Assign = 
     parseVar .>>. (spaces >>. pchar '=' >>. spaces >>. parseP3Exp)
