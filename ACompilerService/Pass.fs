@@ -260,12 +260,16 @@ let rec calcSpace t =
     | VecType v' -> (Array.length v') * 8
     | _ -> 8
     
+let testSpace =
+    
 let makeP2Vec t l  =
+    let space =  calcSpace t
     let newVar = genSym ()
     let l' = List.mapi (fun i x -> P2VectorSet (newVar, i, x)) l 
     let l'' = List.foldBack (fun x exp -> P2LetExp (-1, x, exp)) l' (P2VarAtm newVar)
-    P2LetExp (newVar, (P2Allocate (calcSpace t, t)), l'' )
-    
+    P2IfExp(
+        P2LetExp (newVar, (P2Allocate (space, t)), l'' ) )
+     
 let anf exp = 
     let rec loop exp = 
         match exp with 
@@ -485,6 +489,14 @@ let genFromUOp op atm1 =
     | ExprUOp.Not -> P4BOp (InstrBOp.Xor, P4Int 0x1L, p3AtmToP4Atm atm1)
     | _ -> Impossible () |> raise
 
+let makeVecRef idx =
+    P4DeRef (Reg.Rax, 8 * (idx + 1))
+let genVectorRef v idx leftAtm =
+    [
+        P4BOp (InstrBOp.Mov, P4Var v, P4Reg Reg.Rax)
+        P4BOp (InstrBOp.Mov, makeVecRef idx, leftAtm)
+    ]
+
 let selectInstructions p3Prg = 
     let rec handleTail (t:Pass3Tail) acc =
         match t with
@@ -499,6 +511,9 @@ let selectInstructions p3Prg =
             | P3UPrim (op, atm1) -> 
                 let thisCode = genFromUOp op atm1
                 handleTail tail (thisCode :: acc)
+            | P3VectorRef (v, idx') ->
+                let thisCode = genVectorRef v idx' (P4Var idx)
+                handleTail tail ( (List.rev thisCode) @ acc)
         | P3Return (p3Exp) -> 
             let lastCode = P4CtrOp (InstrCtrOp.Jmp, conclusionLabel)
             match p3Exp with

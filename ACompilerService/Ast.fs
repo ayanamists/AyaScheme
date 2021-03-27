@@ -85,6 +85,9 @@ type Pass2Out =
 | P2VectorRef of Index * int
 | P2VectorSet of Index * int * Pass2Atm
 | P2Allocate of int * ExprValueType
+| P2Global of string
+| P2Collect of int
+
 let P2IntAtm x = P2Int x |> P2Atm
 let P2VarAtm x = P2Var x |> P2Atm
 
@@ -104,6 +107,9 @@ type Pass3Exp =
 | P3Allocate of int * ExprValueType
 | P3VectorRef of Index * int
 | P3VectorSet of Index * int * Pass3Atm
+| P3Global of string
+| P3Collect of int
+
 type Pass3Goto = P3Goto of Label
 type Pass3Stmt =
 | P3Assign of Index * Pass3Exp
@@ -175,6 +181,7 @@ type Pass4Atm =
 | P4Var of Index
 | P4Int of int64
 | P4Reg of Reg
+| P4DeRef of Reg * int
 type Pass4Instr = 
 | P4CtrOp of InstrCtrOp * Label
 | P4UOp of InstrUOp * Pass4Atm
