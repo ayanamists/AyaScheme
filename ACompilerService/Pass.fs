@@ -80,21 +80,12 @@ let rec typeCheck exp =
         match getType i with
         | Some t -> (exp, t) |> Result.Ok
         | None -> Impossible () |> raise
-    | P1LetExp (l, expr) ->
-        let rec handleL l =
-            match l with
-            | [] -> [] |> Result.Ok
-            | (id, exp) :: tl ->
-                result {
-                    let! (exp', t) = typeCheck exp
-                    assignType id t
-                    let! l' = handleL tl
-                    return (id, exp') :: l'
-                }
+    | P1LetExp (id, exp1, exp2) ->
         result {
-            let! l' = handleL l
-            let! (exp', t) = typeCheck expr
-            return (P1LetExp (l', exp'), t)
+            let! exp1', t1 = typeCheck exp1
+            assignType id t1
+            let! (exp2', t2) = typeCheck exp2
+            return (P1LetExp (id, exp1', exp2'), t2)
         }
     | P1IfExp (cond, ifTrue, ifFalse) ->
         result {
@@ -193,10 +184,12 @@ let lexicalAddress exp =
                         let! x = loop env exp 
                         return! handleList tl ((idx, x) :: nowL) (addEnv nowEnv id idx)
                     }
+            let decomp l expr = List.fold (fun res (id, expr) -> 
+                P1LetExp (id, expr, res)) expr l
             result {
                 let! (nowL, nowEnv) = (handleList l [] env)
                 let! nowExpr = loop nowEnv expr
-                return Pass1Out.P1LetExp ((List.rev nowL), nowExpr)
+                return decomp nowL nowExpr
             }
         | Expr.OpExp (op, expr1, expr2) ->
             result {
@@ -260,29 +253,23 @@ let rec calcSpace t =
     | VecType v' -> (Array.length v') * 8
     | _ -> 8
     
-let testSpace =
+let testSpace = ()
     
 let makeP2Vec t l  =
     let space =  calcSpace t
     let newVar = genSym ()
     let l' = List.mapi (fun i x -> P2VectorSet (newVar, i, x)) l 
     let l'' = List.foldBack (fun x exp -> P2LetExp (-1, x, exp)) l' (P2VarAtm newVar)
-    P2IfExp(
-        P2LetExp (newVar, (P2Allocate (space, t)), l'' ) )
-     
+    P2Int 0L
+
 let anf exp = 
     let rec loop exp = 
         match exp with 
         | P1Int i -> P2Int i |> P2Atm 
         | P1Id i -> P2Var i |> P2Atm
         | P1Bool b -> P2Bool b |> P2Atm
-        | P1LetExp (l, exp) -> 
-            match l with
-            | [] -> loop exp
-            | (var, vexp) :: tl ->
-                let v = loop vexp
-                let t = (P1LetExp (tl, exp)) |> loop
-                P2LetExp (var, v, t)
+        | P1LetExp (id, exp1, exp2) -> 
+            P2LetExp (id, loop exp1, loop exp2)
         | P1OpExp (op, expr1, expr2) -> 
             anfList ((fun e1 e2 -> P2OpExp (op, e1, e2)) |> listToTuple2f) [expr1; expr2]
         | P1UOpExp (op, expr1) ->
@@ -292,8 +279,7 @@ let anf exp =
             let exp2' = loop exp2
             let exp3' = loop exp3
             P2IfExp (exp1', exp2', exp3')
-        | P1Vector (l, t) ->
-            anfList (makeP2Vec t) l
+        | P1Vector (l, t) -> Impossible () |> raise
         | P1VectorRef (v, i) ->
             let f x = match x with
                       | [ P2Var i' ] -> P2VectorRef( i', i)

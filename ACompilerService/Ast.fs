@@ -1,8 +1,7 @@
 ﻿module ACompilerService.Ast
 
-open System
-open System
 open Utils
+open FSharp.Collections
 
 type Value = 
 | IntValue of int64
@@ -18,9 +17,41 @@ type ExprOp =
 | IEq = 5 | IEqB = 6 | IEqL = 7 | IB = 8 | IL = 9
 | And = 10 | Or = 11 
 
+let exprOpWithStr = 
+    [ (ExprOp.Add, "+")
+      (ExprOp.Sub, "-")
+      (ExprOp.Mult, "*")
+      (ExprOp.Div, "/") 
+      (ExprOp.Eq, "eq?")
+      (ExprOp.IEq, "=")
+      (ExprOp.IEqB, ">=")
+      (ExprOp.IEqL, "<=")
+      (ExprOp.IB, ">")
+      (ExprOp.IL, "<")
+      (ExprOp.And, "and")
+      (ExprOp.Or, "or") 
+    ]
+
+let exprOpStr = List.unzip exprOpWithStr |> snd
+let exprOpStrMap = Map.ofList exprOpWithStr
+let strExprOpMap = List.unzip exprOpWithStr |> (fun (x, y) -> List.zip y x) 
+                   |> Map.ofList
+
 type ExprUOp =
 | Not = 0
 | VecLen = 1
+
+let exprUOpWithStr = 
+    [   
+        (ExprUOp.Not, "not")
+        (ExprUOp.VecLen, "vector-length")
+    ]
+let exprUOpStr = List.unzip exprUOpWithStr |> snd
+let exprUOpStrMap = Map.ofList exprUOpWithStr
+let strExprUOpMap = List.unzip exprUOpWithStr |> (fun (x, y) -> List.zip y x) 
+                   |> Map.ofList
+
+
 let printOp (op:ExprOp) = 
     match op with
     | ExprOp.Add -> "+"
@@ -63,13 +94,28 @@ type Pass1Out =
 | P1Int of int64
 | P1Bool of bool
 | P1Id of Index
-| P1LetExp of ((Index * Pass1Out) list) * Pass1Out
+| P1LetExp of Index * Pass1Out * Pass1Out
 | P1OpExp of ExprOp * Pass1Out * Pass1Out
 | P1IfExp of Pass1Out * Pass1Out * Pass1Out
 | P1UOpExp of ExprUOp * Pass1Out
-| P1VectorRef of Pass1Out * int
-| P1VectorSet of Pass1Out * int * Pass1Out
-| P1Vector of Pass1Out list * ExprValueType
+| P1VectorRef of Pass1Out * Index
+| P1VectorSet of Pass1Out * Index * Pass1Out
+| P1Vector of Pass1Out list * ExprValueType  
+| P1Allocate of int * ExprValueType
+| P1Global of string
+| P1Collect of int
+
+(*
+    Notice: 
+    Vector and Allocate/Global/Collect can't both exists in 
+    one file of Pass1Out Langauge
+    e.g. 
+    (vector 1 2 3 4) --legal
+    (allocate 12)    --legal
+
+    (let (_ (vector 1 2 3 4)) --
+      (allocate 12))          -- Illegal
+*)
 
 type Pass2Atm = 
 | P2Int of int64

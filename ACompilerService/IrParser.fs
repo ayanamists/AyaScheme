@@ -3,6 +3,53 @@ module ACompilerService.IrParser
 open FParsec
 open Ast
 open Parser
+open Utils
+open System
+
+let int64ToInt32 (i:int64) = System.Convert.ToInt32(i)
+
+let pIndex = pchar '$' >>. pint32
+let pIndexP1 = pIndex |>> P1Id
+let rec s2P1 s = 
+    match s with
+    | SInt i -> P1Int i |> Result.Ok
+    | SBool b -> P1Bool b |> Result.Ok
+    | SId id -> runParser pIndexP1 id
+    | SExp [SId "let"; (SExp [(SId id); value]); exp] -> result {
+        let! x = runParser pIndex id
+        let! value' = s2P1 value
+        let! exp' = s2P1 exp
+        return P1LetExp (x, value', exp') }
+    | SExp [SId op; exp1; exp2] when strExprOpMap.ContainsKey op -> result {
+        let! exp1' = s2P1 exp1
+        let! exp2' = s2P1 exp2
+        return P1OpExp (strExprOpMap.TryGetValue (op) |> snd, exp1', exp2') }
+    | SExp [SId op; exp1 ] when strExprUOpMap.ContainsKey op -> result {
+        let! exp1' = s2P1 exp1
+        return P1UOpExp (strExprUOpMap.TryGetValue op |> snd, exp1') }
+    | SExp [SId "if"; exp1; exp2; exp3 ] -> result {
+        let! exp1' = s2P1 exp1
+        let! exp2' = s2P1 exp2
+        let! exp3' = s2P1 exp3
+        return P1IfExp (exp1', exp2', exp3') }
+    | SExp [SId "vector-ref"; exp1; SInt i] -> result {
+        let! exp1' = s2P1 exp1
+        return P1VectorRef (exp1', int64ToInt32 i) }
+    | SExp [SId "vector-set!"; exp1; SInt i; exp2] -> result {
+        let! exp1' = s2P1 exp1
+        let! exp2' = s2P1 exp2
+        return P1VectorSet (exp1', int64ToInt32 i, exp2') }
+    | SExp [SId "vector"; (SExp l); t] -> result {
+        let! l' = resultMap s2P1 l
+        let t = intType
+        return P1Vector (l', t) }
+    | _ -> Result.Error (SyntaxError "syntax error")
+
+
+let parseP1 str = result {
+    let! s = parse str
+    return! s2P1 s
+}
 
 let parseVar : Parser<_, unit> =
     pchar '(' >>. spaces >>. pstring "var" >>. spaces >>. pint32  .>>  pchar ')'

@@ -25,12 +25,15 @@ do pTypeRef := pIntType <|> pBoolType <|> pVecType <|> pVoidType
 let pLPair = pchar '(' <|> pchar '[' <|> pchar '{'
 let pRPair = pchar ')' <|> pchar ']' <|> pchar '}'
 
-let notIdentifierChar = 
-    (List.append ['(' ; ')' ; ' '; '\n'; '['; ']'; '{' ; '}'; '#'] 
-        (List.map (fun x -> (string x).[0]) [0 .. 9]))
 
-let idChar = noneOf notIdentifierChar
-let pId : Parser<SExpression, unit> = many1Chars idChar |>> SId
+let notIdEndChar = ['(' ; ')' ; ' '; '\n'; '['; ']'; '{' ; '}']
+let notIdBeginChar = notIdEndChar @ ['#'] @ (List.map (fun x -> (string x).[0]) [0 .. 9])
+
+let idBeginChar = noneOf notIdBeginChar
+let idChar = noneOf notIdEndChar
+let pId : Parser<SExpression, unit> = idBeginChar .>>. (manyChars idChar) 
+                                      |>> fun (x, y) -> (string x + y)
+                                      |>> SId
 let pNum : Parser<SExpression, unit> = pint64 |>> SInt
 let pBool : Parser<SExpression, unit> = pchar '#'  >>.
                                         (pchar 't' |>> (fun x -> true |> SBool)
