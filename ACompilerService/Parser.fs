@@ -54,6 +54,7 @@ let parse str =
 
 let rec sExpToAst sexp = 
     match sexp with
+    | SId "void" -> Void () |> Result.Ok
     | SId id -> Id id |> Result.Ok
     | SBool t -> Bool t |> Result.Ok
     | SInt inner -> Int inner |> Result.Ok

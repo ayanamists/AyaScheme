@@ -8,14 +8,25 @@ open System
 
 let int64ToInt32 (i:int64) = System.Convert.ToInt32(i)
 
-let pIndex = pchar '$' >>. pint32
+let rec s2Type s =
+    match s with
+    | SId "int" -> IntType () |> Result.Ok
+    | SId "bool" -> BoolType () |> Result.Ok
+    | SExp l -> result {
+        let! l' = resultMap s2Type l
+        return l' |> Array.ofList |> VecType }
+    | SId "void" -> VoidType () |> Result.Ok
+    | _ -> Result.Error (SyntaxError (sprintf "type syntax error in %A" s))
+
+let pIndex = (pchar '$' >>. pint32) <|> (pchar '_' >>% -1)
 let pIndexP1 = pIndex |>> P1Id
 let rec s2P1 s = 
     match s with
     | SInt i -> P1Int i |> Result.Ok
     | SBool b -> P1Bool b |> Result.Ok
     | SId id -> runParser pIndexP1 id
-    | SExp [SId "let"; (SExp [(SId id); value]); exp] -> result {
+    | SExp [SId "void"] -> P1Void () |> Result.Ok
+    | SExp [SId "let"; SExp [(SExp [(SId id); value])]; exp] -> result {
         let! x = runParser pIndex id
         let! value' = s2P1 value
         let! exp' = s2P1 exp
@@ -41,9 +52,14 @@ let rec s2P1 s =
         return P1VectorSet (exp1', int64ToInt32 i, exp2') }
     | SExp [SId "vector"; (SExp l); t] -> result {
         let! l' = resultMap s2P1 l
-        let t = intType
+        let! t = s2Type t
         return P1Vector (l', t) }
-    | _ -> Result.Error (SyntaxError "syntax error")
+    | SExp [SId "global"; SId s] -> P1Global s |> Result.Ok
+    | SExp [SId "allocate"; SInt i; t] -> result {
+        let! t = s2Type t
+        return P1Allocate (int64ToInt32 i, t) }
+    | SExp [SId "collect"; SInt i] -> P1Collect (int64ToInt32 i) |> Result.Ok
+    | _ -> Result.Error (SyntaxError (sprintf "syntax error in %A" s))
 
 
 let parseP1 str = result {

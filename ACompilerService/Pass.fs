@@ -5,6 +5,7 @@ open Ast
 open FSharpx.Collections
 open Utils
 open Coloring
+open GlobalVar
     
 type CompileState =  { mutable newVarIdx: Index;
                        mutable blockIds: Index
@@ -40,8 +41,83 @@ let setVecType v idx t' =
                     else v'.[idx] <- t'
                          () |> Result.Ok
     | t -> makeTypeError VecType t |> Result.Error
+
 (*
-    type-check
+    Pass 1: Lexical Address
+*)
+
+        
+let makeVarNotBoundError i = (VarNotBoundError (sprintf "%A is Not bound" i))
+
+(*
+    Pass 1-1 : Lexical Addressing
+    e.g. 
+         in  -> (let ([a 10] [b 20])
+                  (let ([c 11] [a 12])
+                     (+ a b))
+         out ->
+                (let ([$0 10] [$1 20])
+                  (let ([$2 11] [$3 12])
+                    (+ $3 $1)))
+*)
+
+let lexicalAddress exp =
+    let rec loop (env:Env<Identifier, Index>) exp = 
+        match exp with
+        | Expr.Int i -> P1Int i |> Result.Ok
+        | Expr.Bool b -> P1Bool b |> Result.Ok
+        | Expr.Id i -> 
+            match (searchEnv env i) with
+            | Some res -> res |> Pass1Out.P1Id |> Result.Ok
+            | None -> makeVarNotBoundError i |> Result.Error
+        | Expr.LetExp (l, expr) ->
+            let rec handleList l nowL (nowEnv:Env<Identifier, Index>) =
+                match l with
+                | [] -> (nowL, nowEnv) |> Result.Ok
+                | (id , exp) :: tl ->
+                    result {
+                        let idx = if (id = "_") then -1 else genSym ()
+                        let! x = loop env exp 
+                        return! handleList tl ((idx, x) :: nowL) (addEnv nowEnv id idx)
+                    }
+            let decomp l expr = List.fold (fun res (id, expr) -> 
+                P1LetExp (id, expr, res)) expr l
+            result {
+                let! (nowL, nowEnv) = (handleList l [] env)
+                let! nowExpr = loop nowEnv expr
+                return decomp nowL nowExpr
+            }
+        | Expr.OpExp (op, expr1, expr2) ->
+            result {
+                let! e1 = loop env expr1 
+                let! e2 = loop env expr2 
+                return Pass1Out.P1OpExp (op, e1, e2 )
+            }
+        | Expr.IfExp (cond, ifTrue, ifFalse) ->
+            result {
+                let! e1 = loop env cond 
+                let! e2 = loop env ifTrue 
+                let! e3 = loop env ifFalse 
+                return P1IfExp (e1, e2, e3)
+            }
+        | Expr.UOpExp (op, exp) ->
+            result {
+                let! exp' = loop env exp 
+                return P1UOpExp (op, exp')
+            }
+        | Expr.Vector l -> result {
+            let! l' = resultMap (fun x -> loop env x ) l
+            return P1Vector (l', voidType)
+            }
+        | Expr.VectorRef (v, idx) ->
+            result1 (loop env) v (fun v' -> P1VectorRef (v', idx))
+        | Expr.VectorSet (v, idx, value) ->
+            result2' (loop env) v value (fun v' value'  -> P1VectorSet (v', idx, value'))
+        | Void _ -> P1Void () |> Result.Ok
+    loop emptyEnv<Identifier, Index> exp
+
+(*
+    Pass 1-2 : type-check
 *)
 
 let rec transformP1If cond =
@@ -57,7 +133,6 @@ let rec transformP1If cond =
     | _ -> cond
 
      
-let makeVarNotBoundError i = (VarNotBoundError (sprintf "%A is Not bound" i))
 let rec typeCheck exp =
     let typeEqual exp1 exp2 t1 t2 =
         if t1 = t2
@@ -76,6 +151,7 @@ let rec typeCheck exp =
     match exp with
     | P1Int _ -> (exp, ExprValueType.IntType ()) |> Result.Ok
     | P1Bool _ -> (exp, ExprValueType.BoolType ()) |> Result.Ok
+    | P1Void _ -> (exp, ExprValueType.VoidType ()) |> Result.Ok
     | P1Id i ->
         match getType i with
         | Some t -> (exp, t) |> Result.Ok
@@ -150,80 +226,79 @@ let rec typeCheck exp =
             let! tvv = getVecType tv idx
             return (P1VectorRef (v', idx), tvv)
         }
-        
+    | P1Allocate _
+    | P1Collect _
+    | P1Global _ -> Impossible () |> raise
 
 (*
-    Pass 1: Lexical Address
-    e.g. 
-         in  -> (let ([a 10] [b 20])
-                  (let ([c 11] [a 12])
-                     (+ a b))
-         out ->
-                (let ([#0 10] [#1 20])
-                  (let ([#2 11] [#3 12])
-                    (+ #3 #1)))
+    Pass 1-3 : Expose Allocation
 *)
 
+let rec calcSpace t =
+    match t with
+    | VecType v' -> (Array.length v') * 8
+    | _ -> 8
 
-let lexicalAddress exp =
-    let rec loop (env:Env<Identifier, Index>) exp = 
-        match exp with
-        | Expr.Int i -> P1Int i |> Result.Ok
-        | Expr.Bool b -> P1Bool b |> Result.Ok
-        | Expr.Id i -> 
-            match (searchEnv env i) with
-            | Some res -> res |> Pass1Out.P1Id |> Result.Ok
-            | None -> makeVarNotBoundError i |> Result.Error
-        | Expr.LetExp (l, expr) ->
-            let rec handleList l nowL (nowEnv:Env<Identifier, Index>) =
-                match l with
-                | [] -> (nowL, nowEnv) |> Result.Ok
-                | (id , exp) :: tl ->
-                    result {
-                        let idx = genSym ()
-                        let! x = loop env exp 
-                        return! handleList tl ((idx, x) :: nowL) (addEnv nowEnv id idx)
-                    }
-            let decomp l expr = List.fold (fun res (id, expr) -> 
-                P1LetExp (id, expr, res)) expr l
-            result {
-                let! (nowL, nowEnv) = (handleList l [] env)
-                let! nowExpr = loop nowEnv expr
-                return decomp nowL nowExpr
-            }
-        | Expr.OpExp (op, expr1, expr2) ->
-            result {
-                let! e1 = loop env expr1 
-                let! e2 = loop env expr2 
-                return Pass1Out.P1OpExp (op, e1, e2 )
-            }
-        | Expr.IfExp (cond, ifTrue, ifFalse) ->
-            result {
-                let! e1 = loop env cond 
-                let! e2 = loop env ifTrue 
-                let! e3 = loop env ifFalse 
-                return P1IfExp (e1, e2, e3)
-            }
-        | Expr.UOpExp (op, exp) ->
-            result {
-                let! exp' = loop env exp 
-                return P1UOpExp (op, exp')
-            }
-        | Expr.Vector l -> result {
-            let! l' = resultMap (fun x -> loop env x ) l
-            return P1Vector (l', voidType)
-            }
-        | Expr.VectorRef (v, idx) ->
-            result1 (loop env) v (fun v' -> P1VectorRef (v', idx))
-        | Expr.VectorSet (v, idx, value) ->
-            result2' (loop env) v value (fun v' value'  -> P1VectorSet (v', idx, value'))
-    loop emptyEnv<Identifier, Index> exp
+let makeVec l t  =
+    let len = List.length l
+    let tempIdxs = List.map (fun _ -> genSym ()) [1..len]
+    let vecIdx = genSym ()
+    let size = calcSpace t
+    let vecSets = 
+        List.foldBack (fun t e  -> 
+            P1LetExp (-1, 
+                    P1VectorSet (P1Id vecIdx, t, tempIdxs.[t] |> P1Id),
+                    e))
+            [0..(len - 1)]
+            (P1Id vecIdx)
+    let allocAndSet = P1LetExp (vecIdx, P1Allocate (size, t), vecSets)
+    let test = 
+        P1IfExp (
+            P1OpExp (ExprOp.IL, 
+                     P1OpExp (ExprOp.Add, P1Global freePtr, int32ToInt64 size |> P1Int),
+                     P1Global fromEnd),
+            P1Void (),
+            P1Collect size
+        )
+    let testAndSet = P1LetExp (-1, test, allocAndSet)
+    let allExp =
+        List.foldBack
+            (fun (id, e') e -> P1LetExp (id, e', e))
+            (List.zip tempIdxs l)
+            testAndSet
+    allExp
+    // let letBind = List.fold
+
+let rec exposeAllocation exp =
+    match exp with
+    | P1Bool _ 
+    | P1Int _ 
+    | P1Id _ 
+    | P1Void _ -> exp
+    | P1LetExp (i, e1, e2) -> 
+        P1LetExp (i, exposeAllocation e1, exposeAllocation e2)
+    | P1OpExp (op, e1, e2) ->
+        P1OpExp (op, exposeAllocation e1, exposeAllocation e2)
+    | P1UOpExp (op, e1) ->
+        P1UOpExp (op, exposeAllocation e1)
+    | P1VectorRef (e, i) -> P1VectorRef (exposeAllocation e, i)
+    | P1VectorSet (e1, i, e2) -> P1VectorSet (exposeAllocation e1, i, e2)
+    | P1IfExp (e1, e2, e3) -> 
+        P1IfExp ( exposeAllocation e1,
+                  exposeAllocation e2,
+                  exposeAllocation e3 )
+    | P1Allocate _ 
+    | P1Global _ 
+    | P1Collect _ -> Impossible () |> raise
+    | P1Vector (l, t) -> makeVec (List.map exposeAllocation l) t
+    
 
 let pass1 x = result {
-    let! x' = lexicalAddress x
-    let! (x'', _) = typeCheck x'
-    return x''
-} 
+    let! x = lexicalAddress x
+    let! (x, _) = typeCheck x
+    let x = exposeAllocation x
+    return x
+}
 
 (*
     Approach 1 : Pass 2 Administrative Normal Form
@@ -248,19 +323,9 @@ let listToTuple1f f l =
 let listToTuple2f f l =
     listToTuple2 l |> fun (e1, e2) -> f e1 e2
    
-let rec calcSpace t =
-    match t with
-    | VecType v' -> (Array.length v') * 8
-    | _ -> 8
     
 let testSpace = ()
     
-let makeP2Vec t l  =
-    let space =  calcSpace t
-    let newVar = genSym ()
-    let l' = List.mapi (fun i x -> P2VectorSet (newVar, i, x)) l 
-    let l'' = List.foldBack (fun x exp -> P2LetExp (-1, x, exp)) l' (P2VarAtm newVar)
-    P2Int 0L
 
 let anf exp = 
     let rec loop exp = 

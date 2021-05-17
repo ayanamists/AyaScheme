@@ -89,6 +89,7 @@ type Expr =
 | VectorRef of Expr * int
 | VectorSet of Expr * int * Expr
 | Vector of Expr list
+| Void of unit
 
 type Pass1Out = 
 | P1Int of int64
@@ -104,6 +105,7 @@ type Pass1Out =
 | P1Allocate of int * ExprValueType
 | P1Global of string
 | P1Collect of int
+| P1Void of unit
 
 (*
     Notice: 

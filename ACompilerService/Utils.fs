@@ -263,3 +263,5 @@ let listToTuple1f f l =
     listToTuple1 l |> f
 let listToTuple2f f l =
     listToTuple2 l |> fun (e1, e2) -> f e1 e2
+
+let int32ToInt64 (i:int32) = System.Convert.ToInt64(i)
