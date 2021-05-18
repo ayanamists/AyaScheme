@@ -267,7 +267,6 @@ let makeVec l t  =
             (List.zip tempIdxs l)
             testAndSet
     allExp
-    // let letBind = List.fold
 
 let rec exposeAllocation exp =
     match exp with
@@ -308,6 +307,7 @@ let isAtomPass1Out p1o =
     match p1o with
     | P1Id _ -> true
     | P1Int _ -> true
+    | P1Global _ -> true
     | _ -> false
 
 let listToTuple1 l =
@@ -324,15 +324,16 @@ let listToTuple2f f l =
     listToTuple2 l |> fun (e1, e2) -> f e1 e2
    
     
-let testSpace = ()
-    
-
 let anf exp = 
     let rec loop exp = 
         match exp with 
         | P1Int i -> P2Int i |> P2Atm 
         | P1Id i -> P2Var i |> P2Atm
         | P1Bool b -> P2Bool b |> P2Atm
+        | P1Global g -> P2Global g |> P2Atm
+        | P1Void _ -> P2Void ()
+        | P1Collect bytes -> P2Collect bytes
+        | P1Allocate (bytes, t) -> P2Allocate (bytes, t)
         | P1LetExp (id, exp1, exp2) -> 
             P2LetExp (id, loop exp1, loop exp2)
         | P1OpExp (op, expr1, expr2) -> 
@@ -364,6 +365,7 @@ let anf exp =
                 | P1Id i -> handleExpl tl ((P2Var i) :: ids)
                 | P1Int i -> handleExpl tl ((P2Int i) :: ids)
                 | P1Bool b -> handleExpl tl ((P2Bool b) :: ids)
+                | P1Global g -> handleExpl tl ((P2Global g) :: ids)
                 | _ -> 
                     let sym = genSym ()
                     let hdR = loop hd

@@ -67,6 +67,61 @@ let parseP1 str = result {
     return! s2P1 s
 }
 
+let pIndexP2 = pIndex |>> P2Var
+let pP2Atm exp = 
+    match exp with
+    | SInt i -> P2Int i |> Result.Ok
+    | SBool b -> P2Bool b |> Result.Ok
+    | SId i -> runParser pIndexP2 i 
+    | SExp [SId "global"; SId s] -> P2Global s |> Result.Ok
+    | SExp _ -> Result.Error (SyntaxError "should be atm")
+let getId exp = 
+    match exp with
+    | P2Var i -> i |> Result.Ok
+    | _ -> Result.Error (SyntaxError "should be $id")
+
+let rec s2P2 s = 
+    match s with
+    | SInt _ 
+    | SBool _ 
+    | SExp [SId "global"; SId _] 
+    | SId _ -> pP2Atm s >>= (Result.Ok .- P2Atm)
+    | SExp [SId "void"] -> P2Void () |> Result.Ok
+    | SExp [SId "let"; SExp [(SExp [(SId id); value])]; exp] -> result {
+        let! x = runParser pIndex id
+        let! value' = s2P2 value
+        let! exp' = s2P2 exp
+        return P2LetExp (x, value', exp') }
+    | SExp [SId op; exp1; exp2] when strExprOpMap.ContainsKey op -> result {
+        let! exp1' = pP2Atm exp1
+        let! exp2' = pP2Atm exp2
+        return P2OpExp (strExprOpMap.TryGetValue (op) |> snd, exp1', exp2') }
+    | SExp [SId op; exp1 ] when strExprUOpMap.ContainsKey op -> result {
+        let! exp1' = pP2Atm exp1
+        return P2UOpExp (strExprUOpMap.TryGetValue op |> snd, exp1') }
+    | SExp [SId "if"; exp1; exp2; exp3 ] -> result {
+        let! exp1' = s2P2 exp1
+        let! exp2' = s2P2 exp2
+        let! exp3' = s2P2 exp3
+        return P2IfExp (exp1', exp2', exp3') }
+    | SExp [SId "vector-ref"; exp1; SInt i] -> result {
+        let! exp1 = pP2Atm exp1 >>= getId
+        return P2VectorRef (exp1, int64ToInt32 i) }
+    | SExp [SId "vector-set!"; exp1; SInt i; exp2] -> result {
+        let! exp1' = pP2Atm exp1 >>= getId
+        let! exp2' = pP2Atm exp2
+        return P2VectorSet (exp1', int64ToInt32 i, exp2') }
+    | SExp [SId "allocate"; SInt i; t] -> result {
+        let! t = s2Type t
+        return P2Allocate (int64ToInt32 i, t) }
+    | SExp [SId "collect"; SInt i] -> P2Collect (int64ToInt32 i) |> Result.Ok
+    | _ -> Result.Error (SyntaxError (sprintf "syntax error in %A" s))
+
+let parseP2 str = result {
+    let! s = parse str
+    return! s2P2 s
+}
+
 let parseVar : Parser<_, unit> =
     pchar '(' >>. spaces >>. pstring "var" >>. spaces >>. pint32  .>>  pchar ')'
 let parseP3Var = parseVar |>> P3Var

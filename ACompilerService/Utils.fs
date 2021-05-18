@@ -139,6 +139,10 @@ let resultMap (f:'a->Result<'b,'c>) l =
                return! build tl (hd' :: acc)
             }
     build l []
+
+let (>>=) x f = Result.bind f x
+
+let (.-) f g = fun x -> f (g x)
     
 type Graph<'s when 's : comparison > = G of Map<'s, Set<'s>>
 

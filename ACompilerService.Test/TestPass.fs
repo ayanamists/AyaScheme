@@ -221,6 +221,7 @@ let ``Pass 1 test 7`` () =
 
 let toPass2 x = Result.bind pass2 (toPass1 x) 
 let testPass2 x = toPass2 x |> getResult
+let parseP2T x = parseP2 x |> getResult
 [<Fact>]
 let ``Pass 2 test 1`` () =
     let prg = prgList.[0]
@@ -280,6 +281,28 @@ let ``Pass 2 test 5`` () =
         |> makeRes
     Assert.Equal(wanted, testPass2 prg)
     
+[<Fact>]
+let ``Pass 2 test 6`` () = 
+    let prg = prgList.[21]
+    let wanted = parseP2T "
+(let ([$5 (let ([$0 1])
+            (let ([$1 2])
+              (let ([$2 3])
+                (let ([$3 4])
+                  (let ([_ (if (let ([$6 (+ (global free_ptr) 32)])
+                                 (< $6 (global fromspace_end)))
+                               (void)
+                               (collect 32))])
+                    (let ([$4 (allocate 32 (int int int int))])
+                      (let ([_ (vector-set! $4 0 $0)])
+                        (let ([_ (vector-set! $4 1 $1)])
+                          (let ([_ (vector-set! $4 2 $2)])
+                            (let ([_ (vector-set! $4 3 $3)])
+                              $4))))))))))])
+  (vector-ref $5 1))
+    "
+    Assert.Equal(wanted, testPass2 prg)
+
 
 let toPass3 x = result {
     let! x' = toPass2 x 

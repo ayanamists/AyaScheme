@@ -123,6 +123,7 @@ type Pass2Atm =
 | P2Int of int64
 | P2Var of Index
 | P2Bool of bool
+| P2Global of string
 
 type Pass2Out =
 | P2Atm of Pass2Atm
@@ -133,11 +134,12 @@ type Pass2Out =
 | P2VectorRef of Index * int
 | P2VectorSet of Index * int * Pass2Atm
 | P2Allocate of int * ExprValueType
-| P2Global of string
 | P2Collect of int
+| P2Void of unit
 
 let P2IntAtm x = P2Int x |> P2Atm
 let P2VarAtm x = P2Var x |> P2Atm
+let P2BoolAtm x = P2Bool x |> P2Atm
 
 type Info = { stackSize:int }
 type Label = string
