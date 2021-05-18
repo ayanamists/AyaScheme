@@ -419,6 +419,31 @@ let ``Pass 3 test 7`` () =
     let res = testPass3 prg
     Assert.Equal(wanted, res)
     
+[<Fact>]
+let ``Pass 3 test 8`` () = 
+    let prg = prgList.[21]
+    let p3 = parseP3 "
+_start:
+  (var 0) = 1
+  (var 1) = 2
+  (var 2) = 3
+  (var 3) = 4
+  (var 6) = +(global(free_ptr), 32)
+  if <((var 6), global(fromspace_end)) goto label(block-0)
+  goto label(block-1)
+block-1:
+  collect(32)
+  goto label(block-0)
+block-0:
+  (var 4) = allocate(32, (int, int, int, int))
+  vector-set!(4, 0, (var 0))
+  vector-set!(4, 1, (var 1))
+  vector-set!(4, 2, (var 2))
+  vector-set!(4, 3, (var 3))
+  (var 5) = (var 4)
+  return vector-ref(5, 1)
+    "
+    Assert.Equal(p3, testPass3 prg)
 
 let toPass4 x = Result.bind pass4 (toPass3 x)
 let testPass4 x = (toPass4 x) |> getResult

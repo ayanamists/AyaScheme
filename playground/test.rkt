@@ -27,8 +27,8 @@
             (let ([$1 2])
               (let ([$2 3])
                 (let ([$3 4])
-                  (let ([_ (if (let ([$5 (+ (global free_ptr) 32)])
-                                 (< $5 (global fromspace_end)))
+                  (let ([_ (if (let ([$6 (+ (global free_ptr) 32)])
+                                 (< $6 (global fromspace_end)))
                                (void)
                                (collectbytes))])
                     (let ([$4 (allocate 32 (int int int int))])
@@ -38,3 +38,23 @@
                             (let ([_ (vector-set! $4 3 $3)])
                               $4))))))))))])
   (vector-ref $5 1))
+
+_start:
+  (var 0) = 1
+  (var 1) = 2
+  (var 2) = 3
+  (var 3) = 4
+  (var 6) = +(global(free_ptr), 32)
+  if <((var 6), global(fromspace_end)) goto label(block-0)
+  goto label(block-1)
+_block-1:
+  collect(32)
+  goto block-0
+_block-0:
+  (var 4) = allocate(32, (int, int, int, int))
+  vector-set!(4, 0, (var 0))
+  vector-set!(4, 1, (var 1))
+  vector-set!(4, 2, (var 2))
+  vector-set!(4, 3, (var 3))
+  (var 5) = (var 5)
+  return vector-ref((var 5), 1)

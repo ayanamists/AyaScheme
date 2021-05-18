@@ -1,0 +1,34 @@
+ P3Program
+  ({ stackSize = 0 },
+   [("_start",
+     P3Seq
+       (P3Assign (0, P3Atm (P3Int 1L)),
+        P3Seq
+          (P3Assign (1, P3Atm (P3Int 2L)),
+           P3Seq
+             (P3Assign (2, P3Atm (P3Int 3L)),
+              P3Seq
+                (P3Assign (3, P3Atm (P3Int 4L)),
+                 P3Seq
+                   (P3Assign (6, P3BPrim (Add, P3Global "free_ptr", P3Int 32L)),
+                    P3If
+                      (P3BPrim (IL, P3Var 6, P3Global "fromspace_end"),
+                       P3Goto "block-0", P3Goto "block-1")))))));
+    ("block-1", P3Seq (P3Collect 32, P3TailGoto (P3Goto "block-0")));
+    ("block-0",
+     P3Seq
+       (P3Assign
+          (4,
+           P3Allocate
+             (32, VecType [|IntType (); IntType (); IntType (); IntType ()|])),
+        P3Seq
+          (P3VectorSet (4, 0, P3Var 0),
+           P3Seq
+             (P3VectorSet (4, 1, P3Var 1),
+              P3Seq
+                (P3VectorSet (4, 2, P3Var 2),
+                 P3Seq
+                   (P3VectorSet (4, 3, P3Var 3),
+                    P3Seq
+                      (P3Assign (5, P3Atm (P3Var 4)),
+                       P3Return (P3VectorRef (5, 1)))))))))])

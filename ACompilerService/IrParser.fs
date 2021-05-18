@@ -129,8 +129,10 @@ let parseP3Int : Parser<_, unit> = pint64 |>> P3Int
 let parseP3Bool : Parser<_, unit> =
     pchar '#' >>. ((pchar 't' |>> (fun _ -> true))
                    <|> (pchar 'f' |>> (fun _ -> false ))) |>> P3Bool
-
-let parseP3Atm = (parseP3Var <|> parseP3Bool <|> parseP3Int) 
+let parseGlobal : Parser<_, unit> = 
+    pstring "global" >>. pchar '(' >>. (many1Chars (noneOf [')'])) .>> pchar ')' |>> string
+let parseP3Global = parseGlobal |>> P3Global    
+let parseP3Atm = (parseP3Var <|> parseP3Bool <|> parseP3Int <|> parseP3Global) 
 let parseP3Atm' = parseP3Atm |>> P3Atm
 let parseP3BOp = pchar '+' |>> (fun _ -> ExprOp.Add)
                 <|> (pchar '-' |>> (fun _ -> ExprOp.Sub))
@@ -164,8 +166,8 @@ let parseVecRef :Parser<Pass3Exp,unit> =
         (pchar ',' >>. spaces >>. pint32 .>> spaces) .>> pchar ')'
     |>> P3VectorRef
 
-let parseVecSet :Parser<Pass3Exp, unit> =
-    pstring "vector-set" >>.
+let parseVecSet :Parser<Pass3Stmt, unit> =
+    pstring "vector-set!" >>.
         (spaces >>. pchar '(' >>. pint32 ) .>> spaces .>>.
         (pchar ','  >>. spaces >>.pint32 .>> spaces) .>>.
         (pchar ',' >>.spaces >>.parseP3Atm .>> spaces) .>> pchar ')'
@@ -177,11 +179,14 @@ let parseP3Allocate :Parser<Pass3Exp, unit> =
         (pchar ',' >>. spaces >>. pType  .>> pchar ')') |>> P3Allocate
 
 let parseP3Exp = parseP3Atm' <|> parseP3BOpExpr <|> parseP3UOpExpr
-                 <|> parseP3Allocate <|> parseVecSet <|> parseVecRef
+                 <|> parseP3Allocate <|> parseVecRef
 
 let parseP3Assign = 
     parseVar .>>. (spaces >>. pchar '=' >>. spaces >>. parseP3Exp)
     |>> fun (i, exp) -> (i, exp) |> P3Assign
+let parseP3Collect =
+    pstring "collect" >>. pchar '(' >>. pint32 .>> pchar ')' |>> P3Collect
+let parseP3Stmt = parseP3Collect <|> parseP3Assign <|> parseVecSet
 
 let parseLabel = 
     pstring "label" >>. pchar '(' >>. charsTillString ")" false 100 .>> pchar ')'
@@ -196,7 +201,7 @@ let parseP3TailGoto = parseP3Goto |>> P3TailGoto
 let parseP3Tail, parseP3TailRef = createParserForwardedToRef<Pass3Tail, unit> ()
 do parseP3TailRef :=
     parseP3TailGoto <|> parseP3If 
-                    <|> ((parseP3Assign .>>. (spaces1 >>. parseP3Tail)) 
+                    <|> ((parseP3Stmt .>>. (spaces1 >>. parseP3Tail)) 
                         |>> fun (a, s) -> P3Seq (a, s))
                     <|> parseP3Return
 

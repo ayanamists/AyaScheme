@@ -384,6 +384,7 @@ let p2AtmToP3Atm atm =
     | P2Int i -> P3Int i
     | P2Var i -> P3Var i
     | P2Bool b -> P3Bool b
+    | P2Global g -> P3Global g
 let p2OpExpToP3OpExp op atm1 atm2 =
     P3BPrim (op, atm1 |> p2AtmToP3Atm, atm2 |> p2AtmToP3Atm)
 let p2UOpExpToP3 op atm1 = P3UPrim (op, atm1 |> p2AtmToP3Atm)
@@ -394,8 +395,8 @@ let transformP2 exp =
     | P2OpExp (op, atm1, atm2) -> let p3Opbp = p2OpExpToP3OpExp op atm1 atm2 in p3Opbp
     | P2UOpExp (op, atm1) -> p2UOpExpToP3 op atm1
     | P2Allocate (size, t) -> P3Allocate (size, t) 
-    | P2VectorSet (v, idx, value) -> P3VectorSet (v, idx, p2AtmToP3Atm value) 
     | P2VectorRef (v, idx) -> P3VectorRef (v, idx)
+    | P2Void _ -> P3Void ()
     | _ -> Impossible () |> raise
 let explicitControl exp =
     let mutable acc = []
@@ -410,7 +411,17 @@ let explicitControl exp =
             let ifTrue' = lazy explicitTail ifTrue
             let ifFalse' = lazy explicitTail ifFalse
             explicitCond cond ifTrue' ifFalse'
-        | _ -> transformP2 exp |> P3Return
+        | P2VectorSet (idx, vidx, atm) -> 
+            P3Seq (P3VectorSet (idx, vidx, p2AtmToP3Atm atm), 
+                   P3Return (P3Void ()))
+        | P2Collect size -> 
+            P3Seq (P3Collect size, P3Return (P3Void ()))
+        | P2Allocate _ 
+        | P2Void _ 
+        | P2OpExp _
+        | P2UOpExp _ 
+        | P2VectorRef _ 
+        | P2Atm _ -> transformP2 exp |> P3Return
     and explicitAssign idx rhs cont = 
         match rhs with
         | P2LetExp (idx2, rhs2, e) -> 
@@ -423,6 +434,12 @@ let explicitControl exp =
             let ifFalse' = lazy explicitAssign idx ifFalse ifCont
             addBlock cont contLabel
             explicitCond cond ifTrue' ifFalse'
+        | P2VectorSet (idx, vidx, exp) -> 
+            P3Seq (P3VectorSet (idx, vidx, p2AtmToP3Atm exp), 
+                   cont)
+        | P2Collect size -> 
+            P3Seq (P3Collect size, cont)
+        | P2Void _ -> cont
         | _ -> let rhs' = transformP2 rhs in P3Seq (P3Assign (idx, rhs'), cont)
     and explicitCond cond ifTrue ifFalse =
         let makeGoto (expr:Lazy<Pass3Tail>) =

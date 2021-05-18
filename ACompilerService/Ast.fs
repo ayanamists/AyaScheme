@@ -150,19 +150,21 @@ type Pass3Atm =
 | P3Int of int64
 | P3Var of Index
 | P3Bool of bool
+| P3Global of string
+
 type Pass3Exp = 
 | P3Atm of Pass3Atm
 | P3BPrim of ExprOp * Pass3Atm * Pass3Atm
 | P3UPrim of ExprUOp * Pass3Atm
 | P3Allocate of int * ExprValueType
 | P3VectorRef of Index * int
-| P3VectorSet of Index * int * Pass3Atm
-| P3Global of string
-| P3Collect of int
+| P3Void of unit
 
 type Pass3Goto = P3Goto of Label
 type Pass3Stmt =
 | P3Assign of Index * Pass3Exp
+| P3Collect of int
+| P3VectorSet of Index * int * Pass3Atm
 type Pass3Tail = 
 | P3Return of Pass3Exp
 | P3Seq of Pass3Stmt * Pass3Tail
